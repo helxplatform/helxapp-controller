@@ -30,7 +30,7 @@ func NewHeLxAppReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset) *He
 
 func (r *HeLxAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&helxapp.HeLxApp}). // Replace with the actual type of your custom resource.
+		For(&helxapp.HeLxApp{}). // Replace with the actual type of your custom resource.
 		Complete(r)
 }
 func (r *HeLxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

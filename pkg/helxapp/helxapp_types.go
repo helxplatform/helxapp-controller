@@ -23,10 +23,10 @@ type HeLxAppStatus struct {
 	// Add your fields here, e.g., current service configurations.
 }
 
+// HeLxApp is the Schema for the helxapps API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// HeLxApp is the Schema for the helxapps API
+// +kubebuilder:object:generate=true
 type HeLxApp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
