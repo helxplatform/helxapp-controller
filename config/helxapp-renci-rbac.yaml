@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: helxapp-controller-role
+rules:
+- apiGroups:
+  - renci.org
+  resources:
+  - helxapps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: helxapp-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: helxapp-controller-role
+subjects:
+- kind: ServiceAccount
+  name: helxapp-c
+  namespace: jeffw

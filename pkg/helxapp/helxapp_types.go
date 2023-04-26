@@ -4,6 +4,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// HeLxAppList contains a list of HeLxApp
+// +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
+type HeLxAppList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []HeLxApp `json:"items"`
+}
+
 // HeLxApp is the Schema for the helxapps API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -51,13 +60,4 @@ type VolumeMount struct {
 // +k8s:deepcopy-gen=true
 type HeLxAppStatus struct {
 	// Add your fields here, e.g., current service configurations.
-}
-
-// HeLxAppList contains a list of HeLxApp
-// +kubebuilder:object:root=true
-// +kubebuilder:object:generate=true
-type HeLxAppList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HeLxApp `json:"items"`
 }
