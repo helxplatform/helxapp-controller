@@ -1,0 +1,101 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  creationTimestamp: null
+  name: helxapps.helx.renci.org
+spec:
+  group: helx.renci.org
+  names:
+    kind: HelxApp
+    listKind: HelxAppList
+    plural: helxapps
+    singular: helxapp
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: HelxApp is the Schema for the helxapps API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: HelxAppSpec defines the desired state of HelxApp
+            properties:
+              services:
+                items:
+                  description: Service represents a single service in a HeLxApp
+                  properties:
+                    environment:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    image:
+                      type: string
+                    name:
+                      type: string
+                    ports:
+                      items:
+                        description: ServicePort represents a single port for a service
+                          in a HeLxApp
+                        properties:
+                          containerPort:
+                            format: int32
+                            type: integer
+                          hostPort:
+                            format: int32
+                            type: integer
+                        required:
+                        - containerPort
+                        type: object
+                      type: array
+                    replicas:
+                      format: int32
+                      type: integer
+                    volumes:
+                      items:
+                        description: VolumeMount represents a single volume mount
+                          for a service in a HeLxApp
+                        properties:
+                          hostPath:
+                            type: string
+                          mountPath:
+                            type: string
+                        required:
+                        - hostPath
+                        - mountPath
+                        type: object
+                      type: array
+                  required:
+                  - environment
+                  - image
+                  - name
+                  - ports
+                  - replicas
+                  - volumes
+                  type: object
+                type: array
+            required:
+            - services
+            type: object
+          status:
+            description: HelxAppStatus defines the observed state of HelxApp
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

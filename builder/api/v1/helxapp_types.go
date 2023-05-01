@@ -25,11 +25,29 @@ import (
 
 // HelxAppSpec defines the desired state of HelxApp
 type HelxAppSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Services []Service `json:"services"`
+}
 
-	// Foo is an example field of HelxApp. Edit helxapp_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// Service represents a single service in a HeLxApp
+type Service struct {
+	Name        string            `json:"name"`
+	Image       string            `json:"image"`
+	Ports       []ServicePort     `json:"ports"`
+	Environment map[string]string `json:"environment"`
+	Volumes     []VolumeMount     `json:"volumes"`
+	Replicas    int32             `json:"replicas"`
+}
+
+// ServicePort represents a single port for a service in a HeLxApp
+type ServicePort struct {
+	ContainerPort int32 `json:"containerPort"`
+	HostPort      int32 `json:"hostPort,omitempty"`
+}
+
+// VolumeMount represents a single volume mount for a service in a HeLxApp
+type VolumeMount struct {
+	MountPath string `json:"mountPath"`
+	HostPath  string `json:"hostPath"`
 }
 
 // HelxAppStatus defines the observed state of HelxApp
@@ -38,9 +56,8 @@ type HelxAppStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // HelxApp is the Schema for the helxapps API
 type HelxApp struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -50,8 +67,7 @@ type HelxApp struct {
 	Status HelxAppStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-
+// +kubebuilder:object:root=true
 // HelxAppList contains a list of HelxApp
 type HelxAppList struct {
 	metav1.TypeMeta `json:",inline"`
