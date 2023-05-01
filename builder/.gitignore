@@ -5,6 +5,7 @@
 *.dll
 *.so
 *.dylib
+*.tgz
 bin
 testbin/*
 Dockerfile.cross
@@ -24,3 +25,6 @@ Dockerfile.cross
 *.swp
 *.swo
 *~
+
+# Unused
+unused
