@@ -1,0 +1,12 @@
+apiVersion: helx.renci.org/v1
+kind: HelxApp
+metadata:
+  labels:
+    app.kubernetes.io/name: helxapp
+    app.kubernetes.io/instance: helxapp-sample
+    app.kubernetes.io/part-of: builder
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: builder
+  name: helxapp-sample
+spec:
+  # TODO(user): Add fields here
