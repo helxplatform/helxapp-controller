@@ -26,5 +26,6 @@ Dockerfile.cross
 *.swo
 *~
 
-# Unused
+# Specific things
 unused
+helxapp-c.yaml

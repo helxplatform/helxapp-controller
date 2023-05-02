@@ -33,9 +33,9 @@ type HelxAppReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=helx.renci.org,resources=helxapps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=helx.renci.org,resources=helxapps/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=helx.renci.org,resources=helxapps/finalizers,verbs=update
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
