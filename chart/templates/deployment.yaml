@@ -37,14 +37,14 @@ spec:
             - name: readiness-probe
               containerPort: 8081
             - name: liveness-probe
-              containerPort: 8082
+              containerPort: 8081
           livenessProbe:
             httpGet:
-              path: /live
+              path: /healthz
               port: liveness-probe
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /readyz
               port: readiness-probe
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

@@ -32,10 +32,10 @@ type HelxAppSpec struct {
 type Service struct {
 	Name        string            `json:"name"`
 	Image       string            `json:"image"`
-	Ports       []ServicePort     `json:"ports"`
-	Environment map[string]string `json:"environment"`
-	Volumes     []VolumeMount     `json:"volumes"`
-	Replicas    int32             `json:"replicas"`
+	Ports       []ServicePort     `json:"ports,omitempty"`
+	Environment map[string]string `json:"environment,omitempty"`
+	Volumes     []VolumeMount     `json:"volumes,omitempty"`
+	Replicas    int32             `json:"replicas,omitempty"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp

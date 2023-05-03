@@ -80,12 +80,8 @@ spec:
                         type: object
                       type: array
                   required:
-                  - environment
                   - image
                   - name
-                  - ports
-                  - replicas
-                  - volumes
                   type: object
                 type: array
             required:

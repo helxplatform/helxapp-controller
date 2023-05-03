@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,9 +49,25 @@ type HelxAppReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// TODO(user): your logic here
+
+	// Fetch the HelxApp custom resource
+	helxApp := &helxv1.HelxApp{}
+	err := r.Get(ctx, req.NamespacedName, helxApp)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Resource is already deleted, return without error
+			logger.Info("HelxApp deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "unable to fetch HelxApp", "NamespacedName", req.NamespacedName)
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Log the event and custom resource content
+	logger.Info("Reconciling HelxApp", "HelxApp", fmt.Sprintf("%+v", helxApp))
 
 	return ctrl.Result{}, nil
 }
