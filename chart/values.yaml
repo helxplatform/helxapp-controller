@@ -80,3 +80,19 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+postgresql:
+  enabled: true
+  primary:
+    initdb:
+      scripts:
+        create-db.sql:
+          CREATE DATABASE helxapp_config;
+        create-schema.sql: |
+          CREATE TABLE templates (
+            set_name text NOT NULL,
+            name text NOT NULL,
+            content text,
+            PRIMARY KEY (set_name, name)
+          );
+
