@@ -89,6 +89,7 @@ postgresql:
         create-db.sql:
           CREATE DATABASE helxapp_config;
         create-schema.sql: |
+          \connect helxapp_config;
           CREATE TABLE templates (
             set_name text NOT NULL,
             name text NOT NULL,
