@@ -17,4 +17,13 @@ resources:
   kind: HelxApp
   path: github.com/helxplatform/helxapp/api/v1
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: renci.org
+  group: helx
+  kind: HelxAppInstance
+  path: github.com/helxplatform/helxapp/api/v1
+  version: v1
 version: "3"

@@ -1,0 +1,27 @@
+# permissions for end users to view helxappinstances.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: helxappinstance-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: builder
+    app.kubernetes.io/part-of: builder
+    app.kubernetes.io/managed-by: kustomize
+  name: helxappinstance-viewer-role
+rules:
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxappinstances
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxappinstances/status
+  verbs:
+  - get

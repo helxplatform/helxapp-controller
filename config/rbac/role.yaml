@@ -9,6 +9,32 @@ rules:
 - apiGroups:
   - helx.renci.org
   resources:
+  - helxappinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxappinstances/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxappinstances/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - helx.renci.org
+  resources:
   - helxapps
   verbs:
   - create

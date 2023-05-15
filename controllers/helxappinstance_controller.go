@@ -29,50 +29,50 @@ import (
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
 )
 
-// HelxAppReconciler reconciles a HelxApp object
-type HelxAppReconciler struct {
+// HelxAppInstanceReconciler reconciles a HelxAppInstance object
+type HelxAppInstanceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/finalizers,verbs=update
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the HelxApp object against the actual cluster state, and then
+// the HelxAppInstance object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
+func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// Fetch the HelxApp custom resource
-	helxApp := &helxv1.HelxApp{}
-	err := r.Get(ctx, req.NamespacedName, helxApp)
+	// Fetch the HelxAppInstance custom resource
+	helxAppInstance := &helxv1.HelxAppInstance{}
+	err := r.Get(ctx, req.NamespacedName, helxAppInstance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
-			logger.Info("HelxApp deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
+			logger.Info("HelxAppInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "unable to fetch HelxApp", "NamespacedName", req.NamespacedName)
+		logger.Error(err, "unable to fetch HelxAppInstance", "NamespacedName", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Log the event and custom resource content
-	logger.Info("Reconciling HelxApp", "HelxApp", fmt.Sprintf("%+v", helxApp))
+	logger.Info("Reconciling HelxAppInstance", "HelxAppInstance", fmt.Sprintf("%+v", helxAppInstance))
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HelxAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HelxAppInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&helxv1.HelxApp{}).
+		For(&helxv1.HelxAppInstance{}).
 		Complete(r)
 }
