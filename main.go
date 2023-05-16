@@ -33,6 +33,7 @@ import (
 
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
 	"github.com/helxplatform/helxapp/controllers"
+	"github.com/helxplatform/helxapp/template_io"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -46,6 +47,17 @@ func init() {
 
 	utilruntime.Must(helxv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
+}
+
+func GetDBConnectionString() string {
+	// Read environment variables
+	dbHost := os.Getenv("DB_HOST")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+
+	// Build the connection string
+	return template_io.BuildConnectionString(dbHost, dbUser, dbPassword, dbName)
 }
 
 func main() {
@@ -112,6 +124,14 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("getting templates")
+	connString := GetDBConnectionString()
+	loader := template_io.NewInMemoryLoader()
+	if err := loader.LoadTemplatesFromDB(connString, "templates"); err != nil {
+		setupLog.Error(err, "unable to read template source from database")
 		os.Exit(1)
 	}
 
