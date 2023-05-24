@@ -35,6 +35,15 @@ type HelxAppReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+var HelxApps []*helxv1.HelxApp
+
+func AddHelxAppToArray(appArray []*helxv1.HelxApp, newApp *helxv1.HelxApp) []*helxv1.HelxApp {
+	if newApp != nil {
+		appArray = append(appArray, newApp)
+	}
+	return appArray
+}
+
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps/finalizers,verbs=update
@@ -66,7 +75,7 @@ func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxApp", "HelxApp", fmt.Sprintf("%+v", helxApp))
-
+	AddHelxAppToArray(HelxApps, helxApp)
 	return ctrl.Result{}, nil
 }
 

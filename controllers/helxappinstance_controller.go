@@ -26,13 +26,164 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/CloudyKit/jet/v6"
+	"github.com/google/uuid"
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
+	"github.com/helxplatform/helxapp/template_io"
 )
 
 // HelxAppInstanceReconciler reconciles a HelxAppInstance object
 type HelxAppInstanceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+}
+
+type System struct {
+	Name                string
+	AMB                 bool
+	SystemEnv           []EnvVar
+	Username            string
+	SystemName          string
+	Host                string
+	Identifier          string
+	AppID               string
+	EnableInitContainer bool
+	CreateHomeDirs      bool
+	DevPhase            string
+	SecurityContext     SecurityContext
+	Containers          []Container
+}
+
+type SecurityContext struct {
+	RunAsUser  int
+	RunAsGroup int
+	FsGroup    int
+}
+
+type Container struct {
+	Name           string
+	Image          string
+	Command        []string
+	Env            []EnvVar
+	Ports          []Port
+	Expose         []Port
+	Resources      ResourceRequirements
+	VolumeMounts   []VolumeMount
+	LivenessProbe  *Probe
+	ReadinessProbe *Probe
+}
+
+type EnvVar struct {
+	Name  string
+	Value string
+}
+
+type Port struct {
+	ContainerPort int
+	Protocol      string
+}
+
+type ResourceRequirements struct {
+	Limits   ResourceList
+	Requests ResourceList
+}
+
+type ResourceList struct {
+	CPU    string
+	Memory string
+	GPU    string
+}
+
+type VolumeMount struct {
+	Name      string
+	MountPath string
+	SubPath   string
+	ReadOnly  bool
+}
+
+type Probe struct {
+	Exec                *ExecAction
+	HTTPGet             *HTTPGetAction
+	TCPSocket           *TCPSocketAction
+	InitialDelaySeconds int32
+	PeriodSeconds       int32
+	FailureThreshold    int32
+}
+
+type ExecAction struct {
+	Command []string
+}
+
+type HTTPGetAction struct {
+	Path        string
+	Port        int32
+	Scheme      string
+	HttpHeaders map[string]string
+}
+
+type TCPSocketAction struct {
+	Port int32
+}
+
+var initialized bool = false
+
+func Initemplate() {
+	err := template_io.InitJetTemplate("../templates", "container-spec.jet")
+	if err != nil {
+		fmt.Print("failed to initialize Jet template: %v", err)
+	}
+}
+
+func getDeploymentString(appname string, app helxv1.HelxApp) string {
+	uuid := uuid.New()
+	id := uuid.String()
+	containers := []Container{}
+
+	for i := 0; i < len(app.Spec.Services); i++ {
+		ports := []Port{}
+
+		for j := 0; j < len(app.Spec.Services[i].Ports); j++ {
+			srcPort := app.Spec.Services[i].Ports[j]
+			ports = append(ports, Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
+		}
+		c := Container{
+			Name:         app.Spec.Services[i].Name,
+			Image:        app.Spec.Services[i].Image,
+			Ports:        ports,
+			Expose:       ports,
+			VolumeMounts: []VolumeMount{},
+		}
+		containers = append(containers, c)
+	}
+
+	system := System{
+		Name:                appname,
+		Username:            "jeffw",
+		SystemName:          appname,
+		Host:                "",
+		Identifier:          appname + "-" + id,
+		AppID:               appname + "-" + id,
+		EnableInitContainer: false,
+		CreateHomeDirs:      false,
+		DevPhase:            "test",
+		SecurityContext: SecurityContext{
+			RunAsUser:  0,
+			RunAsGroup: 0,
+			FsGroup:    0,
+		},
+		Containers: containers,
+	}
+
+	vars := make(jet.VarMap)
+	vars.Set("system", system)
+
+	// Call the function.
+	result, err := template_io.RenderJetTemplate(vars)
+	if err != nil {
+		fmt.Print("RenderJetTemplate() error = %v", err)
+		return ""
+	}
+	return result
 }
 
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances,verbs=get;list;watch;create;update;patch;delete
@@ -66,7 +217,10 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxAppInstance", "HelxAppInstance", fmt.Sprintf("%+v", helxAppInstance))
-
+	if !initialized {
+		Initemplate()
+		initialized = true
+	}
 	return ctrl.Result{}, nil
 }
 

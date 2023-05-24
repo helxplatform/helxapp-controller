@@ -3,6 +3,10 @@ FROM golang:1.19 as builder
 ARG TARGETOS
 ARG TARGETARCH
 
+ENV DB_USER=postgres
+ENV DB_HOST=localhost
+ENV DB_NAME=helxapp_config
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -15,6 +19,7 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY template_io/ template_io/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command

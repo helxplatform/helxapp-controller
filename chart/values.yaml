@@ -97,3 +97,8 @@ postgresql:
             PRIMARY KEY (set_name, name)
           );
 
+env:
+  dbHost: "postgresql"
+  dbName: "helxapp_config"
+  dbPassword: ""
+  dbUser: "postgres" 

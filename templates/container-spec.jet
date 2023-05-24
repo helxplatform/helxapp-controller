@@ -1,0 +1,288 @@
+{*
+{{ extends "pod-template" }}
+*}
+
+{{ block tolerations() }}
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+{{ end }}
+
+
+{{ block securityContext() }}
+securityContext:
+  {{- if system.SecurityContext.RunAsUser }}
+  runAsUser: {{ system.SecurityContext.RunAsUser }}
+  {{- end}}
+  {{- if system.SecurityContext.RunAsGroup}}
+  runAsGroup: {{ system.SecurityContext.RunAsGroup }}
+  {{- end}}
+  {{- if system.SecurityContext.FsGroup}}
+  fsGroup: {{ system.SecurityContext.FsGroup }}
+  {{- end}}
+{{end}}
+
+
+{{ block initContainer() }}
+initContainers:
+- name: volume-tasks
+  image: busybox:1.28
+  {% if system.init_security_context.run_as_user or system.init_security_context.run_as_group %}
+  securityContext:
+    {% if system.init_security_context.run_as_user %}
+    runAsUser: {{ system.init_security_context.run_as_user }}
+    {% endif %}
+    {% if system.init_security_context.run_as_group %}
+    runAsGroup: {{ system.init_security_context.run_as_group }}
+    {% endif %}
+  {% endif %}
+  # Fixed resources
+  resources:
+    requests:
+      memory: {{ system.init_memory }}
+      cpu: {{ system.init_cpus }}
+    limits:
+      memory: {{ system.init_memory }}
+      cpu: {{ system.init_cpus }}
+  command: [ 'sh', '-c' ]
+  args:
+    - mkdir -p {{ system.parent_dir }}/{{ system.subpath_dir }} &&
+      mkdir -p {{ system.parent_dir }}/{{ system.shared_dir }} &&
+      {% if system.gitea_integration == True %}
+      mkdir -p {{ system.parent_dir }}/{{ system.subpath_dir }}/.ssh &&
+      echo -e "Host {{ system.gitea_host }}\n     Hostname {{ system.gitea_service_name }}\n     User {{ system.gitea_user }}\n     IdentityFile ~/.ssh/id_gitea" > {{ system.parent_dir }}/{{ system.subpath_dir }}/.ssh/config &&
+      {% endif %}
+      ls -aln {{ system.parent_dir }} &&
+      echo OK
+  volumeMounts:
+  - name: {{ system.stdnfs_pvc }}
+    mountPath: {{ system.parent_dir }}
+{{ end }}
+
+
+{{ block containerSecurityContext() }}
+securityContext:
+  {{if .system.security_context.run_as_user}}
+  runAsUser: {{.system.security_context.run_as_user}}
+  {{end}}
+  {{if .system.security_context.run_as_group}}
+  runAsGroup: {{.system.security_context.run_as_group}}
+  {{end}}
+{{ end }}
+
+{{- block containerEnv(container) }}
+        env:
+        {{- if len(container.Env) > 1}}
+          {{- range index,env := container.Env}}
+          - name: {{ env.Name }}
+            value: {{ env.Value }}
+          {{- end}}
+          - name: GUID
+            value: {{system.Identifier}}
+          - name: USER_NAME
+            value: {{system.Username}}
+          - name: USER
+            value: {{system.Username}}
+          {{- if system.AMB}}
+          - name: NB_PREFIX
+            value: /private/{{system.SystemName}}/{{system.Username}}/{{system.Identifier}}
+          - name: FB_BASEURL
+            value: /private/{{system.SystemName}}/{{system.Username}}/{{system.Identifier}}
+          {{- else}}
+          - name: NB_PREFIX
+            value: /
+          - name: FB_BASEURL
+            value: /
+          {{- end}}
+        {{- end}}
+        - name: HOST
+          value: {{system.Host}}
+        {{- if len(container.Env) == 0 }}
+          - name: GUID
+            value: {{system.Identifier}}
+          - name: USER_NAME
+            value: {{system.Username}}
+          - name: USER
+            value: {{system.Username}}
+          {{- if system.AMB}}
+          - name: NB_PREFIX
+            value: /private/{{system.SystemName}}/{{system.Username}}/{{system.Identifier}}
+          - name: FB_BASEURL
+            value: /private/{{system.SystemName}}/{{system.Username}}/{{system.Identifier}}
+          {{- else}}
+          - name: NB_PREFIX
+            value: /
+          - name: FB_BASEURL
+            value: /
+          {{- end}}
+        {{- end}}
+{{- end}}
+
+{{ block containerPorts(container) }}
+      {{- if system.SystemEnv}}
+        {{- range key,value := system.SystemEnv}}
+        - name: {{ key }}
+          value: {{ value }}
+        {{- end}}
+      {{- end}}
+      {{- if len(container.Expose) > 0}}
+        ports:
+        {{- range index,port := container.Expose}}
+        - containerPort: {{port.ContainerPort}}
+          protocol: TCP
+        {{- end}}
+      {{- end}}
+{{- end}}
+
+{{ block containerResources(container) }}
+{{- if container.Resources.Limits || container.requests}}
+        resources:
+          limits:
+          {{- if container.Resources.Limits}}
+          {{- if container.Resources.Limits.CPU}}
+            cpu: "{{container.Resources.Limits.CPU}}"
+            memory: "{{container.Resources.Limits.Memory}}"
+          {{- end}}
+          {{- if container.Resources.Limits.GPU != "0"}}
+            nvidia.com/gpu: {{container.Resources.Limits.GPU}}
+          {{- end}}
+          {{- end}}
+          requests:
+          {{- if container.Resources.Requests}}
+          {{- if container.Resources.Requests.CPU}}
+            cpu: "{{container.Resources.Requests.CPU}}"
+            memory: "{{container.Resources.Requests.Memory}}"
+          {{- end}}
+          {{- if container.Resources.Requests.GPU != "0"}}
+            nvidia.com/gpu: {{container.Resources.Requests.GPU}}
+          {{- end}}
+          {{- end}}
+{{- end}}
+{{- end}}
+
+{* this is definitely buggy; revisit *}
+{{ block containerVolumeMounts(container) }}
+volumeMounts:
+  {{if system.irods_enabled}}
+  - name: nfs
+    mountPath: "/home/nfs"
+  {{end}}
+  {{if system.gitea_integration}}
+  - name: "{{system.username_all_hyphens}}-id-gitea"
+    mountPath: "{{system.parent_dir}}/{{system.subpath_dir}}/.ssh/id_gitea"
+    subPath: id_gitea
+    readOnly: true
+  {{end}}
+ {if container.Volumes}}
+  {{range index,volume := container.Volumes}}
+    {{ if container.name == volume["container_name"] }}
+    - name: "{{volume_name}}"
+      mountPath: "{{path}}"
+      subPath: "{{subpath}}"
+      readOnly: false
+    {{end}}
+  {{end}}
+{{end}}
+
+{{ block containerLivenessProbe(container) }}
+{{ if container.LivenessProbe }}
+  livenessProbe:
+    {{ if container.LivenessProbe.Exec && container.LivenessProbe.Exec.Command }}
+    exec:
+      command:
+        {{ range index,cmd := container.LivenessProbe.Exec.Command }}
+        - {{ cmd }}
+        {{ end }}
+    {{ else if container.LivenessProbe.HTTPGet && container.LivenessProbe.HTTPGet.Path && container.LivenessProbe.HTTPGet.Port }}
+    httpGet:
+      path: {{ container.LivenessProbe.HTTPGet.Path }}
+      port: {{ container.LivenessProbe.HTTPGet.Port }}
+      {{ if container.LivenessProbe.HTTPGet.HttpHeaders }}
+      httpHeaders:
+        {{ range name,value := container.LivenessProbe.HTTPGet.HttpHeaders }}
+        - name: {{ name }}
+          value: {{ value }}
+        {{ end }}
+      {{ end }}
+    {{ else if container.LivenessProbe.TCPSocket.Port }}
+    tcpSocket:
+      port: {{ container.LivenessProbe.TCPSocket.Port }}
+    {{ end }}
+  {{ if container.LivenessProbe.InitialDelaySeconds }}
+  initialDelaySeconds: {{ container.LivenessProbe.InitialDelaySeconds }}
+  {{ end }}
+  {{ if container.LivenessProbe.PeriodSeconds }}
+  periodSeconds: {{ container.LivenessProbe.PeriodSeconds }}
+  {{ end }}
+  {{ if container.LivenessProbe.FailureThreshold }}
+  failureThreshold: {{ container.LivenessProbe.FailureThreshold }}
+  {{ end }}
+{{ end }}
+{{end}}
+
+{{ block containerReadinessProbe() }}
+{{ if container.ReadinessProbe }}
+  readinessProbe:
+    {{ if container.ReadinessProbe.Exec && container.ReadinessProbe.Exec.Command  }}
+    exec:
+      command:
+        {{ range cmd := container.ReadinessProbe.Exec.Command }}
+        - {{ cmd }}
+        {{ end }}
+    {{ else if container.ReadinessProbe.HTTPGet && container.ReadinessProbe.HTTPGet.Path && container.ReadinessProbe.HTTPGet.Port }}
+    httpGet:
+      path: {{ container.ReadinessProbe.HTTPGet.Path  }}
+      port: {{ container.ReadinessProbe.HTTPGet.Port }}
+      {{ if container.ReadinessProbe.HTTPGet.HttpHeaders }}
+      httpHeaders:
+        {{ range name,value := container.ReadinessProbe.HTTPGet.HttpHeaders }}
+        - name: {{ name }}
+          value: {{ value }}
+        {{ end }}
+      {{ end }}
+    {{ else if container.ReadinessProbe.TCPSocket.Port }}
+    tcpSocket:
+      port: {{ container.ReadinessProbe.TCPSocket.Port }}
+    {{ end }}
+  {{ if container.ReadinessProbe.InitialDelaySeconds }}
+  initialDelaySeconds: {{ container.ReadinessProbe.InitialDelaySeconds }}
+  {{ end }}
+  {{ if container.ReadinessProbe.PeriodSeconds }}
+  periodSeconds: {{ container.ReadinessProbe.PeriodSeconds }}
+  {{ end }}
+  {{ if container.ReadinessProbe.FailureThreshold }}
+  failureThreshold: {{ container.ReadinessProbe.FailureThreshold }}
+  {{ end }}
+{{ end }}
+{{ end }}
+
+{{ block templateVolumes() }}
+volumes:
+  {{ if system.irods_enabled }}
+  - name: nfs
+    nfs:
+      server: {{ system.nfsrods_host }}
+      path: /
+  {{ end }}
+  {{ if system.gitea_integration }}
+  - name: {{ system.username_all_hyphens }}-id-gitea
+    secret:
+      secretName: {{ system.username_all_hyphens }}-id-gitea
+      defaultMode: 0600
+  {{ end }}
+# Changes
+  {{ range container := system.containers }}
+  {{ if container.volumes }}
+  {{ range volume := system.volumes }}
+    {{ if container.name == volume.container_name }}
+    {{ if volume.pvc_name != nil }}
+    - name: {{ volume.volume_name }}
+      persistentVolumeClaim:
+        claimName: {{ volume.pvc_name }}
+    {{ end }}
+    {{ end }}
+  {{ end }}
+  {{ end }}
+  {{ end }}
+  {{ end }}

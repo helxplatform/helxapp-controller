@@ -38,6 +38,15 @@ spec:
               containerPort: 8081
             - name: liveness-probe
               containerPort: 8081
+          env:
+            - name: DB_HOST
+              value: {{ include "helxapp-c.fullname" . }}-{{ .Values.env.dbHost }}
+            - name: DB_NAME
+              value: {{ .Values.env.dbName }}
+            - name: DB_PASSWORD
+              value: {{ .Values.env.dbPassword }}
+            - name: DB_USER
+              value: {{ .Values.env.dbUser }}
           livenessProbe:
             httpGet:
               path: /healthz

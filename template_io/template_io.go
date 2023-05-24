@@ -1,13 +1,44 @@
 package template_io
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
+	"github.com/CloudyKit/jet/v6"
 	"github.com/jackc/pgx/v4"
 )
+
+var JetTemplate *jet.Template
+
+// InitJetTemplate initializes the JetTemplate variable with a given directory and template name
+func InitJetTemplate(dir string, templateName string) error {
+	_, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+
+	loader := jet.NewOSFileSystemLoader(dir)
+	set := jet.NewSet(loader, jet.InDevelopmentMode())
+
+	JetTemplate, err = set.GetTemplate(templateName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func RenderJetTemplate(vars jet.VarMap) (string, error) {
+	var buf bytes.Buffer
+	if err := JetTemplate.Execute(&buf, vars, nil); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 
 // InMemoryLoader holds templates in memory
 type InMemoryLoader struct {

@@ -127,13 +127,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	//setupLog.Info("getting templates")
+	//connString := GetDBConnectionString()
+	//loader := template_io.NewInMemoryLoader()
+	//if err := loader.LoadTemplatesFromDB(connString, "templates"); err != nil {
+	//	setupLog.Error(err, "unable to read template source from database")
+	//	os.Exit(1)
+	//}
+
 	setupLog.Info("getting templates")
-	connString := GetDBConnectionString()
-	loader := template_io.NewInMemoryLoader()
-	if err := loader.LoadTemplatesFromDB(connString, "templates"); err != nil {
-		setupLog.Error(err, "unable to read template source from database")
-		os.Exit(1)
-	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

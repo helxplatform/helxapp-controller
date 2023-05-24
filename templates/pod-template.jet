@@ -1,0 +1,59 @@
+{*
+{{- extends "deployment" -}}
+*}
+{{- import "container-spec" }}
+
+{{- block podMetadata() }}
+      name: {{ system.Name }}
+      labels:
+        name: {{ system.Name }}
+        username: {{ system.Username }}
+        app-name: {{ system.SystemName }}
+        original-app-name: {{ system.SystemName }}
+        reaper-label: {{ system.SystemName }}
+        executor: helxapp-controller
+        helxapp-guid: {{ system.Identifier }}
+        helxapp-app-id: {{ system.AppID }}
+{{- end -}}
+
+{{- block podSpec() -}}
+{{- range index, container := system.Containers -}}
+  {{- if container.Resources.Limits.GPU != "0" && index == 0 -}}
+  {{- yield tolerations() -}}
+  {{- end }}
+  {{- if system.SecurityContext.RunAsUser || system.SecurityContext.RunAsGroup || system.SecurityContext.FsGroup -}}
+  {{- yield securityContext() -}}
+  {{- end -}}
+  {{- if system.EnableInitContainer && system.CreateHomeDirs && system.DevPhase != "test" -}}
+  {{- yield initContainer() -}}
+  {{- end -}}
+{{- end }}
+      containers:
+      {{- range index,container := system.Containers }}
+      - name: {{ container.Name }}
+        image: {{ container.Image }}
+        {{- if system.SecurityContext.RunAsUser || system.SecurityContext.RunAsGroup }}
+        securityContext:
+          {{- if system.SecurityContext.RunAsUser }}
+          runAsUser: {{ system.SecurityContext.RunAsUser }}
+          {{- end }}
+          {{- if system.SecurityContext.RunAsGroup }}
+          runAsGroup: {{system.SecurityContext.RunAsGroup}}
+          {{- end}}
+        {{- end}}
+        {{- if container.Command}}
+        command: {{container.Command}}
+        {{- end}}
+        {{- yield containerEnv(container=container) -}}
+        {{- yield containerPorts(container=container) -}}
+        {{- yield containerResources(container=container) -}}
+        {*
+        {{ yield containerVolumeMounts(container=container) }}
+        *}
+        {{- yield containerLivenessProbe(container=container) -}}
+        {{- yield containerReadinessProbe(container=container) -}}
+      {{ end }}
+      {*
+      {{ block templateVolumes() }}{{ end }}
+      *}
+{{ end }}

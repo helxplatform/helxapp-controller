@@ -35,6 +35,8 @@ spec:
           spec:
             description: HelxAppSpec defines the desired state of HelxApp
             properties:
+              name:
+                type: string
               services:
                 items:
                   description: Service represents a single service in a HeLxApp
@@ -85,6 +87,7 @@ spec:
                   type: object
                 type: array
             required:
+            - name
             - services
             type: object
           status:
