@@ -1,6 +1,7 @@
 package template_io
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/CloudyKit/jet/v6"
@@ -8,113 +9,24 @@ import (
 
 func TestInitJetTemplate(t *testing.T) {
 	//err := InitJetTemplate("../templates", "container-spec.jet")
-	err := InitJetTemplate("../templates", "container-spec.jet")
+	err := InitJetTemplate("../templates", "deployment.jet")
 	if err != nil {
 		t.Errorf("failed to initialize Jet template: %v", err)
 	}
-}
-
-type System struct {
-	Name                string
-	AMB                 bool
-	SystemEnv           []EnvVar
-	Username            string
-	SystemName          string
-	Host                string
-	Identifier          string
-	AppID               string
-	EnableInitContainer bool
-	CreateHomeDirs      bool
-	DevPhase            string
-	SecurityContext     *SecurityContext
-	Containers          []Container
-}
-
-type SecurityContext struct {
-	RunAsUser  int
-	RunAsGroup int
-	FsGroup    int
-}
-
-type Container struct {
-	Name            string
-	Image           string
-	Command         []string
-	Env             []EnvVar
-	Ports           []Port
-	Expose          []Port
-	Resources       ResourceRequirements
-	VolumeMounts    []VolumeMount
-	SecurityContext *SecurityContext
-	LivenessProbe   *Probe
-	ReadinessProbe  *Probe
-}
-
-type EnvVar struct {
-	Name  string
-	Value string
-}
-
-type Port struct {
-	ContainerPort int
-	Protocol      string
-}
-
-type ResourceRequirements struct {
-	Limits   ResourceList
-	Requests ResourceList
-}
-
-type ResourceList struct {
-	CPU    string
-	Memory string
-	GPU    string
-}
-
-type VolumeMount struct {
-	Name      string
-	MountPath string
-	SubPath   string
-	ReadOnly  bool
-}
-
-type Probe struct {
-	Exec                *ExecAction
-	HTTPGet             *HTTPGetAction
-	TCPSocket           *TCPSocketAction
-	InitialDelaySeconds int32
-	PeriodSeconds       int32
-	FailureThreshold    int32
-}
-
-type ExecAction struct {
-	Command []string
-}
-
-type HTTPGetAction struct {
-	Path        string
-	Port        int32
-	Scheme      string
-	HttpHeaders map[string]string
-}
-
-type TCPSocketAction struct {
-	Port int32
 }
 
 func TestRenderJetTemplate(t *testing.T) {
 	// Initialize a VarMap with the necessary values.
 	// Prepare the data for the template
 	system := System{
-		Name:                "test-system",
-		Username:            "test-username",
-		SystemName:          "test-system-name",
-		Host:                "test-system-host",
-		Identifier:          "test-identifier",
-		AppID:               "test-app-id",
-		EnableInitContainer: true,
-		CreateHomeDirs:      true,
-		DevPhase:            "test",
+		Name:           "test-system",
+		Username:       "test-username",
+		SystemName:     "test-system-name",
+		Host:           "test-system-host",
+		Identifier:     "test-identifier",
+		AppID:          "test-app-id",
+		CreateHomeDirs: true,
+		DevPhase:       "test",
 		SecurityContext: &SecurityContext{
 			RunAsUser:  1000,
 			RunAsGroup: 1000,
@@ -197,15 +109,14 @@ func TestRenderNginx(t *testing.T) {
 	// Initialize a VarMap with the necessary values.
 	// Prepare the data for the template
 	system := System{
-		Name:                "nginx",
-		Username:            "jeffw",
-		SystemName:          "nginx",
-		Host:                "host1",
-		Identifier:          "nginx-1",
-		AppID:               "nginx-app-id",
-		EnableInitContainer: false,
-		CreateHomeDirs:      false,
-		DevPhase:            "test",
+		Name:           "nginx",
+		Username:       "jeffw",
+		SystemName:     "nginx",
+		Host:           "host1",
+		Identifier:     "nginx-1",
+		AppID:          "nginx-app-id",
+		CreateHomeDirs: false,
+		DevPhase:       "test",
 		SecurityContext: &SecurityContext{
 			RunAsUser:  0,
 			RunAsGroup: 0,
@@ -263,4 +174,5 @@ func TestRenderNginx(t *testing.T) {
 		return
 	}
 	t.Log("\n" + result)
+	fmt.Printf("%s", result)
 }

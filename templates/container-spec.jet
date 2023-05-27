@@ -71,7 +71,7 @@ securityContext:
   {{end}}
 {{ end }}
 
-{{- block containerEnv(container) }}
+{{- block containerEnv(container=nil) }}
         env:
         {{- if len(container.Env) > 1}}
           {{- range index,env := container.Env}}
