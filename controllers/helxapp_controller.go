@@ -27,21 +27,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
+	"github.com/helxplatform/helxapp/helxapp_operations"
 )
 
 // HelxAppReconciler reconciles a HelxApp object
 type HelxAppReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-}
-
-var HelxApps []*helxv1.HelxApp
-
-func AddHelxAppToArray(appArray []*helxv1.HelxApp, newApp *helxv1.HelxApp) []*helxv1.HelxApp {
-	if newApp != nil {
-		appArray = append(appArray, newApp)
-	}
-	return appArray
 }
 
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxapps,verbs=get;list;watch;create;update;patch;delete
@@ -75,7 +67,7 @@ func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxApp", "HelxApp", fmt.Sprintf("%+v", helxApp))
-	AddHelxAppToArray(HelxApps, helxApp)
+	helxapp_operations.AddApp(&helxApp.Spec)
 	return ctrl.Result{}, nil
 }
 

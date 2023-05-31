@@ -27,7 +27,6 @@ Dockerfile.cross
 *~
 
 # Specific things
-unused
 helxapp-c.yaml
 Chart.lock
 output
