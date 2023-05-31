@@ -1,0 +1,54 @@
+{{- define "podMetadata" }}
+metadata:
+  name: {{ .system.Name }}
+  labels:
+    name: {{ .system.Name }}
+    username: {{ .system.Username }}
+    app-name: {{ .system.SystemName }}
+    original-app-name: {{ .system.SystemName }}
+    reaper-label: {{ .system.SystemName }}
+    executor: helxapp-controller
+    helxapp-guid: {{ .system.Identifier }}
+    helxapp-app-id: {{ .system.AppID }}
+{{- end -}}
+
+{{- define "containerList" }}
+{{- with $system := . -}}
+{{- range $index,$container := .system.Containers -}}
+{{- with $context := dict "system" $system "container" $container }}
+- name: {{ $container.Name }}
+  {{- if or $container.SecurityContext.RunAsUser $container.SecurityContext.RunAsGroup $container.SecurityContext.FsGroup -}}
+  {{- template "securityContext" $container.SecurityContext }}
+  {{- end -}}
+  {{- if $container.Command -}}
+  command: {{ $container.Command }}
+  {{- end }}
+  {{- templateToString "containerEnv" $context | indent 2 }}
+  image: {{ $container.Image }}
+  {{- templateToString "containerPorts" $context | indent 2 }}
+  {{- templateToString "containerResources" $context | indent 2 }}
+  {{- template "containerLivenessProbe" $context }}
+  {{- template "containerReadinessProbe" $context }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "podProps" }}
+  {{- if hasGPU .system.Containers -}}
+  {{- template "gpuTolerations" . }}
+  {{- end -}}
+  {{- if or .system.SecurityContext.RunAsUser .system.SecurityContext.RunAsGroup .system.SecurityContext.FsGroup -}}
+  {{- template "securityContext" .system.SecurityContext }}
+  {{- end -}}
+  {{- if and (ge (len .system.InitContainers) 0) .system.CreateHomeDirs -}}
+  {{- template "initContainer" . }}
+  {{- end -}}
+{{- end -}}
+
+{{- define "podSpec" }}
+spec:
+  {{- template "podProps" . }}
+  containers:
+  {{- templateToString "containerList" . | indent 4 }}
+{{- end }}

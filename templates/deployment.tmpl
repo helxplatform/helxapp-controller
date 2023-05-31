@@ -1,0 +1,29 @@
+{{ define "deployment" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    helxapp-guid: {{ .system.Identifier }}
+    username: {{ .system.Username }}
+  name: {{ .system.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      helxapp-guid: {{ .system.Identifier }}
+      username: {{ .system.Username }}
+      name: {{ .system.Name }}
+      app-name: {{ .system.SystemName }}
+      original-app-name: {{ .system.SystemName }}
+      reaper-label: {{ .system.SystemName }}
+      helxapp-guid: {{ .system.Identifier }}
+      helxapp-app-id: {{ .system.AppID }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    {{- templateToString "podMetadata" . | indent 4 }}
+    {{- templateToString "podSpec" . | indent 4 }}
+{{ end }}

@@ -1,0 +1,261 @@
+{{ define "gpuTolerations" }}
+tolerations:
+  - key: "nvidia.com/gpu"
+  operator: "Exists"
+  effect: "NoSchedule"
+{{- end -}}
+
+{{- define "securityContext" }}
+securityContext:
+  {{- if .RunAsUser }}
+  runAsUser: {{ .RunAsUser }}
+  {{- end -}}
+  {{- if .RunAsGroup }}
+  runAsGroup: {{ .RunAsGroup }}
+  {{- end -}}
+  {{- if .FsGroup }}
+  fsGroup: {{ .FsGroup }}
+  {{- end}}
+{{- end -}}
+
+{{/* Init Container Block */}}
+{{define "initContainer"}}
+initContainers:
+- name: volume-tasks
+  image: busybox:1.28
+  {{ if or .System.InitSecurityContext.RunAsUser .System.InitSecurityContext.RunAsGroup }}
+  securityContext:
+    {{ if .System.InitSecurityContext.RunAsUser }}
+    runAsUser: {{ .System.InitSecurityContext.RunAsUser }}
+    {{ end }}
+    {{ if .System.InitSecurityContext.RunAsGroup }}
+    runAsGroup: {{ .System.InitSecurityContext.RunAsGroup }}
+    {{ end }}
+  {{ end }}
+  # Fixed resources
+  resources:
+    requests:
+      memory: {{ .System.InitMemory }}
+      cpu: {{ .System.InitCpus }}
+    limits:
+      memory: {{ .System.InitMemory }}
+      cpu: {{ .System.InitCpus }}
+  command: [ 'sh', '-c' ]
+  args:
+    - mkdir -p {{ .System.ParentDir }}/{{ .System.SubpathDir }} &&
+      mkdir -p {{ .System.ParentDir }}/{{ .System.SharedDir }} &&
+      {{ if eq .System.GiteaIntegration true }}
+      mkdir -p {{ .System.ParentDir }}/{{ .System.SubpathDir }}/.ssh &&
+      echo -e "Host {{ .System.GiteaHost }}\n     Hostname {{ .System.GiteaServiceName }}\n     User {{ .System.GiteaUser }}\n     IdentityFile ~/.ssh/id_gitea" > {{ .System.ParentDir }}/{{ .System.SubpathDir }}/.ssh/config &&
+      {{ end }}
+      ls -aln {{ .System.ParentDir }} &&
+      echo OK
+  volumeMounts:
+  - name: {{ .System.StdnfsPvc }}
+    mountPath: {{ .System.ParentDir }}
+{{end}}
+
+{{/* Container Security Context Block */}}
+{{define "containerSecurityContext"}}
+securityContext:
+  {{if .System.SecurityContext.RunAsUser}}
+  runAsUser: {{.System.SecurityContext.RunAsUser}}
+  {{end}}
+  {{if .System.SecurityContext.RunAsGroup}}
+  runAsGroup: {{.System.SecurityContext.RunAsGroup}}
+  {{end}}
+{{ end }}
+
+{{- define "containerEnv" }}
+env:
+{{- if ne (len .container.Env) 0 }}
+{{- range $env := .container.Env }}
+- name: {{ $env.Name }}
+  value: {{ $env.Value }}
+{{- end -}}
+{{- end }}
+- name: HOST
+  value: {{ .system.Host }}
+- name: GUID
+  value: {{ .system.Identifier }}
+- name: USER_NAME
+  value: {{ .system.Username }}
+- name: USER
+  value: {{ .system.Username }}
+{{- if .System.AMB -}}
+- name: NB_PREFIX
+  value: /private/{{.system.SystemName}}/{{.system.Username}}/{{.system.Identifier}}
+- name: FB_BASEURL
+  value: /private/{{.system.SystemName}}/{{.system.Username}}/{{.system.Identifier}}
+{{- else }}
+- name: NB_PREFIX
+  value: /
+- name: FB_BASEURL
+  value: /
+{{- end -}}
+{{- end -}}
+
+{{- define "containerPorts" }}
+ports:
+{{- if gt (len .container.Expose) 0 }}
+{{- range $port := .container.Expose }}
+  - containerPort: {{ $port.ContainerPort }}
+    protocol: TCP
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "containerResources" }}
+{{- if or .container.Resources.Limits .container.Resources.Requests }}
+resources:
+  limits:
+  {{- if .container.Resources.Limits -}}
+  {{- if .container.Resources.Limits.CPU }}
+    cpu: "{{ .container.Resources.Limits.CPU }}"
+  {{- end -}}
+  {{- if .container.Resources.Limits.Memory }}
+    memory: "{{.container.Resources.Limits.Memory }}"
+  {{- end -}}
+  {{- if .container.Resources.Limits.GPU }}
+    nvidia.com/gpu: {{ .container.Resources.Limits.GPU }}
+  {{- end -}}
+  {{- end }}
+  requests:
+  {{- if .container.Resources.Requests -}}
+  {{- if .container.Resources.Requests.CPU }}
+    cpu: "{{ .container.Resources.Requests.CPU }}"
+  {{- end -}}
+  {{- if .container.Resources.Requests.Memory }}
+    memory: "{{.container.Resources.Requests.Memory }}"
+  {{- end }}
+  {{- if .container.Resources.Requests.GPU }}
+    nvidia.com/gpu: {{ .container.Resources.Requests.GPU }}
+  {{- end }}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{define "containerVolumeMounts"}}
+volumeMounts:
+  {{if .System.IrodsEnabled}}
+  - name: nfs
+    mountPath: "/home/nfs"
+  {{end}}
+  {{if .System.GiteaIntegration}}
+  - name: "{{.System.UsernameAllHyphens}}-id-gitea"
+    mountPath: "{{.System.ParentDir}}/{{.System.SubpathDir}}/.ssh/id_gitea"
+    subPath: id_gitea
+    readOnly: true
+  {{end}}
+  {{if .Container.Volumes}}
+    {{range $volume := .Container.Volumes}}
+      {{ if eq .Container.Name $volume.ContainerName }}
+      - name: "{{$volume.Name}}"
+        mountPath: "{{$volume.Path}}"
+        subPath: "{{$volume.Subpath}}"
+        readOnly: false
+      {{end}}
+    {{end}}
+  {{end}}
+{{end}}
+
+{{define "containerLivenessProbe"}}
+{{ if .Container.LivenessProbe }}
+  livenessProbe:
+    {{ if and .Container.LivenessProbe.Exec .Container.LivenessProbe.Exec.Command }}
+    exec:
+      command:
+        {{ range $cmd := .Container.LivenessProbe.Exec.Command }}
+        - {{ $cmd }}
+        {{ end }}
+    {{ else if and .Container.LivenessProbe.HTTPGet .Container.LivenessProbe.HTTPGet.Path .Container.LivenessProbe.HTTPGet.Port }}
+    httpGet:
+      path: {{ .Container.LivenessProbe.HTTPGet.Path }}
+      port: {{ .Container.LivenessProbe.HTTPGet.Port }}
+      {{ if .Container.LivenessProbe.HTTPGet.HttpHeaders }}
+      httpHeaders:
+        {{ range $name,$value := .Container.LivenessProbe.HTTPGet.HttpHeaders }}
+        - name: {{ $name }}
+          value: {{ $value }}
+        {{ end }}
+      {{ end }}
+    {{ else if .Container.LivenessProbe.TCPSocket.Port }}
+    tcpSocket:
+      port: {{ .Container.LivenessProbe.TCPSocket.Port }}
+    {{ end }}
+    {{ if .Container.LivenessProbe.InitialDelaySeconds }}
+    initialDelaySeconds: {{ .Container.LivenessProbe.InitialDelaySeconds }}
+    {{ end }}
+    {{ if .Container.LivenessProbe.PeriodSeconds }}
+    periodSeconds: {{ .Container.LivenessProbe.PeriodSeconds }}
+    {{ end }}
+    {{ if .Container.LivenessProbe.FailureThreshold }}
+    failureThreshold: {{ .Container.LivenessProbe.FailureThreshold }}
+    {{ end }}
+{{ end }}
+{{end}}
+
+{{define "containerReadinessProbe"}}
+{{ if .Container.ReadinessProbe }}
+  readinessProbe:
+    {{ if and .Container.ReadinessProbe.Exec .Container.ReadinessProbe.Exec.Command }}
+    exec:
+      command:
+        {{ range $cmd := .Container.ReadinessProbe.Exec.Command }}
+        - {{ $cmd }}
+        {{ end }}
+    {{ else if and .Container.ReadinessProbe.HTTPGet .Container.ReadinessProbe.HTTPGet.Path .Container.ReadinessProbe.HTTPGet.Port }}
+    httpGet:
+      path: {{ .Container.ReadinessProbe.HTTPGet.Path  }}
+      port: {{ .Container.ReadinessProbe.HTTPGet.Port }}
+      {{ if .Container.ReadinessProbe.HTTPGet.HttpHeaders }}
+      httpHeaders:
+        {{ range $name,$value := .Container.ReadinessProbe.HTTPGet.HttpHeaders }}
+        - name: {{ $name }}
+          value: {{ $value }}
+        {{ end }}
+      {{ end }}
+    {{ else if .Container.ReadinessProbe.TCPSocket.Port }}
+    tcpSocket:
+      port: {{ .Container.ReadinessProbe.TCPSocket.Port }}
+    {{ end }}
+    {{ if .Container.ReadinessProbe.InitialDelaySeconds }}
+    initialDelaySeconds: {{ .Container.ReadinessProbe.InitialDelaySeconds }}
+    {{ end }}
+    {{ if .Container.ReadinessProbe.PeriodSeconds }}
+    periodSeconds: {{ .Container.ReadinessProbe.PeriodSeconds }}
+    {{ end }}
+    {{ if .Container.ReadinessProbe.FailureThreshold }}
+    failureThreshold: {{ .Container.ReadinessProbe.FailureThreshold }}
+    {{ end }}
+{{ end }}
+{{end}}
+
+{{define "templateVolumes"}}
+volumes:
+  {{ if .System.IrodsEnabled }}
+  - name: nfs
+    nfs:
+      server: {{ .System.NfsrodsHost }}
+      path: /
+  {{ end }}
+  {{ if .System.GiteaIntegration }}
+  - name: {{ .System.UsernameAllHyphens }}-id-gitea
+    secret:
+      secretName: {{ .System.UsernameAllHyphens }}-id-gitea
+      defaultMode: 0600
+  {{ end }}
+  {{ range $container := .System.Containers }}
+  {{ if .Container.Volumes }}
+    {{ range $volume := .System.Volumes }}
+      {{ if eq .Container.Name $volume.ContainerName }}
+        {{ if $volume.PvcName }}
+        - name: {{ $volume.VolumeName }}
+          persistentVolumeClaim:
+            claimName: {{ $volume.PvcName }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  {{ end }}
+{{end}}
