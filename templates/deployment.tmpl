@@ -13,11 +13,11 @@ spec:
       helxapp-guid: {{ .system.Identifier }}
       username: {{ .system.Username }}
       name: {{ .system.Name }}
-      app-name: {{ .system.SystemName }}
-      original-app-name: {{ .system.SystemName }}
-      reaper-label: {{ .system.SystemName }}
+      app-name: {{ .system.AppName }}
+      original-app-name: {{ .system.AppName }}
+      reaper-label: {{ .system.AppName }}
       helxapp-guid: {{ .system.Identifier }}
-      helxapp-app-id: {{ .system.AppID }}
+      helxapp-app-id: {{ .system.AppName }}
   strategy:
     rollingUpdate:
       maxSurge: 25%

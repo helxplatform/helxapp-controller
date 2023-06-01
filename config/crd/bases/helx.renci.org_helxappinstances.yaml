@@ -79,8 +79,6 @@ spec:
                 type: string
               username:
                 type: string
-              usernameAllHyphens:
-                type: string
             type: object
           status:
             description: HelxAppInstanceStatus defines the observed state of HelxAppInstance

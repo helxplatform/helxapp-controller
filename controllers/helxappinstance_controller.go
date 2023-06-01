@@ -19,19 +19,15 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"text/template"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/google/uuid"
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
-	"github.com/helxplatform/helxapp/template_io"
+	"github.com/helxplatform/helxapp/helxapp_operations"
 )
 
 // HelxAppInstanceReconciler reconciles a HelxAppInstance object
@@ -128,76 +124,6 @@ type TCPSocketAction struct {
 }
 
 var initialized bool = false
-var xformer *template.Template
-var clientset *kubernetes.Clientset
-
-func Init() {
-	var err error
-	var config *rest.Config
-
-	xformer, err = template_io.ParseTemplates("../templates")
-	if err != nil {
-		fmt.Print("failed to initialize xformer template: %v", err)
-		return
-	}
-	config, err = rest.InClusterConfig()
-	if err != nil {
-		fmt.Print("failed to k8s client: %v", err)
-		return
-	}
-	clientset, err = kubernetes.NewForConfig(config)
-	if err != nil {
-		fmt.Print("failed to k8s client: %v", err)
-		return
-	}
-	initialized = true
-}
-
-func getDeploymentString(appname string, app helxv1.HelxApp, instance helxv1.HelxAppInstance) string {
-	uuid := uuid.New()
-	id := uuid.String()
-	containers := []template_io.Container{}
-
-	for i := 0; i < len(app.Spec.Services); i++ {
-		ports := []template_io.Port{}
-
-		for j := 0; j < len(app.Spec.Services[i].Ports); j++ {
-			srcPort := app.Spec.Services[i].Ports[j]
-			ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
-		}
-		c := template_io.Container{
-			Name:         app.Spec.Services[i].Name,
-			Image:        app.Spec.Services[i].Image,
-			Ports:        ports,
-			Expose:       ports,
-			VolumeMounts: []template_io.VolumeMount{},
-		}
-		containers = append(containers, c)
-	}
-
-	system := template_io.System{
-		Name:           appname,
-		Username:       "jeffw",
-		SystemName:     appname,
-		Host:           "",
-		Identifier:     appname + "-" + id,
-		AppID:          appname + "-" + id,
-		CreateHomeDirs: false,
-		DevPhase:       "test",
-		Containers:     containers,
-	}
-
-	vars := make(map[string]interface{})
-	vars["system"] = system
-
-	// Call the function.
-	result, err := template_io.RenderGoTemplate(xformer, "deployment", vars)
-	if err != nil {
-		fmt.Print("RenderGoTemplate() error = %v", err)
-		return ""
-	}
-	return result
-}
 
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances/status,verbs=get;update;patch
@@ -231,7 +157,18 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxAppInstance", "HelxAppInstance", fmt.Sprintf("%+v", helxAppInstance))
 	if !initialized {
-		Init()
+		err = helxapp_operations.Init()
+		if err == nil {
+			initialized = true
+		}
+	}
+	if initialized {
+		deploymentYAML := helxapp_operations.CreateDeploymentString(&helxAppInstance.Spec)
+		logger.Info("generated YAML:")
+		logger.Info(deploymentYAML)
+		if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, deploymentYAML); err != nil {
+			logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
+		}
 	}
 	return ctrl.Result{}, nil
 }

@@ -26,12 +26,11 @@ import (
 // HelxAppInstanceSpec defines the desired state of HelxAppInstance
 type HelxAppInstanceSpec struct {
 	Identifier               string `json:"identifier,omitempty"`
-	SystemName               string `json:"systemName,omitempty"`
+	AppName                  string `json:"systemName,omitempty"`
 	Name                     string `json:"name,omitempty"`
 	SourceText               string `json:"sourceText,omitempty"`
 	AmbassadorId             string `json:"ambassadorId,omitempty"`
 	Username                 string `json:"username,omitempty"`
-	UsernameAllHyphens       string `json:"usernameAllHyphens,omitempty"`
 	Host                     string `json:"host,omitempty"`
 	Namespace                string `json:"namespace,omitempty"`
 	Serviceaccount           string `json:"serviceaccount,omitempty"`

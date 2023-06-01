@@ -4,12 +4,12 @@ metadata:
   labels:
     name: {{ .system.Name }}
     username: {{ .system.Username }}
-    app-name: {{ .system.SystemName }}
-    original-app-name: {{ .system.SystemName }}
-    reaper-label: {{ .system.SystemName }}
+    app-name: {{ .system.AppName }}
+    original-app-name: {{ .system.AppName }}
+    reaper-label: {{ .system.AppName }}
     executor: helxapp-controller
     helxapp-guid: {{ .system.Identifier }}
-    helxapp-app-id: {{ .system.AppID }}
+    helxapp-app-id: {{ .system.AppName }}
 {{- end -}}
 
 {{- define "containerList" }}

@@ -18,10 +18,9 @@ type System struct {
 	AMB             bool
 	SystemEnv       []EnvVar
 	Username        string
-	SystemName      string
+	AppName         string
 	Host            string
 	Identifier      string
-	AppID           string
 	CreateHomeDirs  bool
 	DevPhase        string
 	SecurityContext SecurityContext

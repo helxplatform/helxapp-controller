@@ -21,10 +21,9 @@ func TestRenderGoTemplate(t *testing.T) {
 	system := System{
 		Name:           "test-system",
 		Username:       "test-username",
-		SystemName:     "test-system-name",
+		AppName:        "test-system-name",
 		Host:           "test-system-host",
 		Identifier:     "test-identifier",
-		AppID:          "test-app-id",
 		CreateHomeDirs: true,
 		DevPhase:       "test",
 		SecurityContext: SecurityContext{
@@ -53,10 +52,9 @@ func TestRenderNginx(t *testing.T) {
 	system := System{
 		Name:           "nginx",
 		Username:       "jeffw",
-		SystemName:     "nginx",
+		AppName:        "nginx",
 		Host:           "host1",
 		Identifier:     "nginx-1",
-		AppID:          "nginx-app-id",
 		CreateHomeDirs: false,
 		DevPhase:       "test",
 		SecurityContext: SecurityContext{
