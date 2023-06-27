@@ -39,6 +39,8 @@ spec:
                 type: boolean
               ambassadorId:
                 type: string
+              appName:
+                type: string
               connString:
                 type: string
               fsGroup:
@@ -75,8 +77,6 @@ spec:
                 items:
                   type: integer
                 type: array
-              systemName:
-                type: string
               username:
                 type: string
             type: object

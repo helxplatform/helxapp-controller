@@ -111,7 +111,9 @@ func RenderTemplateToString(tmpl *template.Template, name string, data interface
 
 func HasGPU(containers []Container) bool {
 	for _, container := range containers {
-		if container.Resources.Limits.GPU != "0" || container.Resources.Requests.GPU != "0" {
+		limits := container.Resources.Limits
+		requests := container.Resources.Requests
+		if limits != nil && limits.GPU != "0" || requests != nil && requests.GPU != "0" {
 			return true
 		}
 	}

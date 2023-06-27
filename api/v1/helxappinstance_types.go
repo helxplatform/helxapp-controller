@@ -26,7 +26,7 @@ import (
 // HelxAppInstanceSpec defines the desired state of HelxAppInstance
 type HelxAppInstanceSpec struct {
 	Identifier               string `json:"identifier,omitempty"`
-	AppName                  string `json:"systemName,omitempty"`
+	AppName                  string `json:"appName,omitempty"`
 	Name                     string `json:"name,omitempty"`
 	SourceText               string `json:"sourceText,omitempty"`
 	AmbassadorId             string `json:"ambassadorId,omitempty"`

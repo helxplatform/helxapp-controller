@@ -54,8 +54,7 @@ func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Fetch the HelxApp custom resource
 	helxApp := &helxv1.HelxApp{}
-	err := r.Get(ctx, req.NamespacedName, helxApp)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, helxApp); err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
 			logger.Info("HelxApp deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
@@ -67,7 +66,9 @@ func (r *HelxAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxApp", "HelxApp", fmt.Sprintf("%+v", helxApp))
-	helxapp_operations.AddApp(&helxApp.Spec)
+	if err := helxapp_operations.CheckInit(ctx); err == nil {
+		helxapp_operations.AddApp(helxApp)
+	}
 	return ctrl.Result{}, nil
 }
 

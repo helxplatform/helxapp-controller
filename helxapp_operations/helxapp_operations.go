@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/google/uuid"
@@ -14,82 +15,115 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var apps *map[string]helxv1.HelxAppSpec
+var apps = make(map[string]helxv1.HelxApp)
 var xformer *template.Template
+var simpleInfoLogger func(string)
+var simpleErrorLogger func(error, string)
+var initialized bool = false
+var initLock sync.Mutex
 
-// AddToMap adds the given HelxAppSpec instance to the map
-func addAppToMap(m *map[string]helxv1.HelxAppSpec, app *helxv1.HelxAppSpec) {
-	(*m)[app.Name] = *app
+func newSimpleInfoLogger(ctx context.Context) func(message string) {
+	return func(message string) {
+		logger := log.FromContext(ctx)
+		logger.Info(message)
+	}
 }
 
-func AddApp(app *helxv1.HelxAppSpec) {
+func newSimpleErrorLogger(ctx context.Context) func(err error, message string) {
+	return func(err error, message string) {
+		logger := log.FromContext(ctx)
+		logger.Error(err, message)
+	}
+}
+
+// AddToMap adds the given HelxAppSpec instance to the map
+func addAppToMap(m map[string]helxv1.HelxApp, app *helxv1.HelxApp) {
+	simpleInfoLogger(fmt.Sprintf("storing App using name '%s'", app.Name))
+	m[app.Name] = *app
+}
+
+func AddApp(app *helxv1.HelxApp) {
 	addAppToMap(apps, app)
 }
 
-func GetAppFromMap(m *map[string]helxv1.HelxAppSpec, appName string) helxv1.HelxAppSpec {
-	return (*m)[appName]
+func GetAppFromMap(m map[string]helxv1.HelxApp, appName string) (helxv1.HelxApp, bool) {
+	value, found := m[appName]
+	return value, found
 }
 
-func GetApp(appName string) helxv1.HelxAppSpec {
+func GetApp(appName string) (helxv1.HelxApp, bool) {
 	return GetAppFromMap(apps, appName)
 }
 
-func Init() error {
+func CheckInit(ctx context.Context) error {
 	var err error
 
-	xformer, err = template_io.ParseTemplates("../templates")
-	if err != nil {
-		fmt.Printf("failed to initialize xformer template: %v", err)
+	initLock.Lock()
+	defer initLock.Unlock()
+	if !initialized {
+		simpleInfoLogger = newSimpleInfoLogger(ctx)
+		simpleErrorLogger = newSimpleErrorLogger(ctx)
+		xformer, err = template_io.ParseTemplates("templates")
+		if err != nil {
+			simpleErrorLogger(err, "failed to initialize xformer template")
+			return err
+		} else {
+			simpleInfoLogger("helxapp_operations initialized")
+			initialized = true
+		}
 	}
-	return err
+	return nil
 }
 
 func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 	uuid := uuid.New()
 	id := uuid.String()
 	containers := []template_io.Container{}
-	appSpec := GetAppFromMap(apps, instance.AppName)
 
-	for i := 0; i < len(appSpec.Services); i++ {
-		ports := []template_io.Port{}
+	if app, found := GetAppFromMap(apps, instance.AppName); found {
+		for i := 0; i < len(app.Spec.Services); i++ {
+			ports := []template_io.Port{}
 
-		for j := 0; j < len(appSpec.Services[i].Ports); j++ {
-			srcPort := appSpec.Services[i].Ports[j]
-			ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
+			for j := 0; j < len(app.Spec.Services[i].Ports); j++ {
+				srcPort := app.Spec.Services[i].Ports[j]
+				ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
+			}
+			c := template_io.Container{
+				Name:         app.Spec.Services[i].Name,
+				Image:        app.Spec.Services[i].Image,
+				Ports:        ports,
+				Expose:       ports,
+				VolumeMounts: []template_io.VolumeMount{},
+			}
+			containers = append(containers, c)
 		}
-		c := template_io.Container{
-			Name:         appSpec.Services[i].Name,
-			Image:        appSpec.Services[i].Image,
-			Ports:        ports,
-			Expose:       ports,
-			VolumeMounts: []template_io.VolumeMount{},
+		system := template_io.System{
+			Name:           instance.AppName,
+			Username:       "jeffw",
+			AppName:        instance.AppName,
+			Host:           "",
+			Identifier:     instance.AppName + "-" + id,
+			CreateHomeDirs: false,
+			DevPhase:       "test",
+			Containers:     containers,
 		}
-		containers = append(containers, c)
-	}
 
-	system := template_io.System{
-		Name:           instance.AppName,
-		Username:       "jeffw",
-		AppName:        instance.AppName,
-		Host:           "",
-		Identifier:     instance.AppName + "-" + id,
-		CreateHomeDirs: false,
-		DevPhase:       "test",
-		Containers:     containers,
-	}
+		vars := make(map[string]interface{})
+		vars["system"] = system
 
-	vars := make(map[string]interface{})
-	vars["system"] = system
-
-	// Call the function.
-	result, err := template_io.RenderGoTemplate(xformer, "deployment", vars)
-	if err != nil {
-		fmt.Printf("RenderGoTemplate() error = %v", err)
-		return ""
+		simpleInfoLogger(fmt.Sprintf("applying template to %v+", system))
+		// Call the function.
+		if result, err := template_io.RenderGoTemplate(xformer, "deployment", vars); err != nil {
+			simpleErrorLogger(err, "RenderGoTemplate failed")
+			return ""
+		} else {
+			return result
+		}
 	}
-	return result
+	return ""
 }
 
 func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, deploymentYAML string) error {

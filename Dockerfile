@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.19 as builder
+FROM golang:1.20-bullseye as builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -20,6 +20,8 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY template_io/ template_io/
+COPY helxapp_operations/ helxapp_operations/
+COPY templates/ templates/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
@@ -33,6 +35,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ma
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/templates /templates
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

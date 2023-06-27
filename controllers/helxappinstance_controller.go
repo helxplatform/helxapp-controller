@@ -143,8 +143,7 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Fetch the HelxAppInstance custom resource
 	helxAppInstance := &helxv1.HelxAppInstance{}
-	err := r.Get(ctx, req.NamespacedName, helxAppInstance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, helxAppInstance); err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
 			logger.Info("HelxAppInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
@@ -156,18 +155,14 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxAppInstance", "HelxAppInstance", fmt.Sprintf("%+v", helxAppInstance))
-	if !initialized {
-		err = helxapp_operations.Init()
-		if err == nil {
-			initialized = true
-		}
-	}
-	if initialized {
+	if err := helxapp_operations.CheckInit(ctx); err == nil {
 		deploymentYAML := helxapp_operations.CreateDeploymentString(&helxAppInstance.Spec)
-		logger.Info("generated YAML:")
-		logger.Info(deploymentYAML)
-		if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, deploymentYAML); err != nil {
-			logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
+		if deploymentYAML != "" {
+			logger.Info("generated YAML:")
+			logger.Info(deploymentYAML)
+			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, deploymentYAML); err != nil {
+				logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
+			}
 		}
 	}
 	return ctrl.Result{}, nil
