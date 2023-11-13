@@ -11,7 +11,7 @@ var testTemplate *template.Template
 func TestInitGoTemplate(t *testing.T) {
 	var err error
 
-	testTemplate, err = ParseTemplates("../templates")
+	testTemplate, err = ParseTemplates("../templates", nil)
 	if err != nil {
 		t.Errorf("failed to initialize Go template: %v", err)
 	}

@@ -82,7 +82,7 @@ env:
   value: {{ .system.Username }}
 - name: USER
   value: {{ .system.Username }}
-{{- if .System.AMB -}}
+{{- if .system.AMB -}}
 - name: NB_PREFIX
   value: /private/{{.system.SystemName}}/{{.system.Username}}/{{.system.Identifier}}
 - name: FB_BASEURL

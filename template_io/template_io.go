@@ -26,6 +26,7 @@ type System struct {
 	SecurityContext SecurityContext
 	Containers      []Container
 	InitContainers  []Container
+	Volumes         []Volume
 }
 
 type SecurityContext struct {
@@ -100,6 +101,12 @@ type TCPSocketAction struct {
 	Port int32
 }
 
+type Volume struct {
+	Source string
+	Scheme string
+	Path   string
+}
+
 func RenderTemplateToString(tmpl *template.Template, name string, data interface{}) string {
 	buf := new(bytes.Buffer)
 	err := tmpl.ExecuteTemplate(buf, name, data)
@@ -120,7 +127,7 @@ func HasGPU(containers []Container) bool {
 	return false
 }
 
-func ParseTemplates(dir string) (*template.Template, error) {
+func ParseTemplates(dir string, log func(string)) (*template.Template, error) {
 	// Get a list of all .tmpl files in the directory
 	files, err := filepath.Glob(filepath.Join(dir, "*.tmpl"))
 	if err != nil {
@@ -137,6 +144,9 @@ func ParseTemplates(dir string) (*template.Template, error) {
 	funcMap := sprig.TxtFuncMap()
 
 	funcMap["templateToString"] = func(name string, data interface{}) string {
+		if log != nil {
+			log(fmt.Sprintf("data:\n%v+\n", data))
+		}
 		return RenderTemplateToString(tmpl, name, data)
 	}
 

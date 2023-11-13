@@ -13,9 +13,9 @@ metadata:
 {{- end -}}
 
 {{- define "containerList" }}
-{{- with $system := . -}}
+{{- with $dot := . -}}
 {{- range $index,$container := .system.Containers -}}
-{{- with $context := dict "system" $system "container" $container }}
+{{- with $context := dict "system" $dot.system "container" $container }}
 - name: {{ $container.Name }}
   {{- if or $container.SecurityContext.RunAsUser $container.SecurityContext.RunAsGroup $container.SecurityContext.FsGroup -}}
   {{- template "securityContext" $container.SecurityContext }}

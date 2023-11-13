@@ -72,13 +72,13 @@ spec:
                         description: VolumeMount represents a single volume mount
                           for a service in a HeLxApp
                         properties:
-                          hostPath:
-                            type: string
                           mountPath:
                             type: string
+                          sourcePath:
+                            type: string
                         required:
-                        - hostPath
                         - mountPath
+                        - sourcePath
                         type: object
                       type: array
                   required:

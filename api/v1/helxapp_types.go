@@ -47,8 +47,8 @@ type ServicePort struct {
 
 // VolumeMount represents a single volume mount for a service in a HeLxApp
 type VolumeMount struct {
-	MountPath string `json:"mountPath"`
-	HostPath  string `json:"hostPath"`
+	MountPath  string `json:"mountPath"`
+	SourcePath string `json:"sourcePath"`
 }
 
 // HelxAppStatus defines the observed state of HelxApp

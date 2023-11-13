@@ -14,7 +14,7 @@ spec:
         NGINX_PORT: "80"
       volumes:
         - mountPath: /usr/share/nginx/html
-          hostPath: /path/to/your/html
+          sourcePath: /path/to/your/html
       replicas: 2
     - name: redis
       image: redis:6.2

@@ -160,7 +160,7 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		if deploymentYAML != "" {
 			logger.Info("generated YAML:")
 			logger.Info(deploymentYAML)
-			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, deploymentYAML); err != nil {
+			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxAppInstance, deploymentYAML); err != nil {
 				logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
 			}
 		}

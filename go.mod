@@ -11,7 +11,6 @@ require (
 )
 
 require (
-	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
@@ -29,7 +28,6 @@ require (
 )
 
 require (
-	github.com/CloudyKit/jet/v6 v6.2.0
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect

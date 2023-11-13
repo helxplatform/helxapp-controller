@@ -2,6 +2,7 @@ package helxapp_operations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -66,7 +67,7 @@ func CheckInit(ctx context.Context) error {
 	if !initialized {
 		simpleInfoLogger = newSimpleInfoLogger(ctx)
 		simpleErrorLogger = newSimpleErrorLogger(ctx)
-		xformer, err = template_io.ParseTemplates("templates")
+		xformer, err = template_io.ParseTemplates("templates", simpleInfoLogger)
 		if err != nil {
 			simpleErrorLogger(err, "failed to initialize xformer template")
 			return err
@@ -78,10 +79,57 @@ func CheckInit(ctx context.Context) error {
 	return nil
 }
 
+func parseVolumeSourcePath(service helxv1.Service, sourceMap map[string]template_io.Volume) ([]template_io.VolumeMount, error) {
+	var details []template_io.VolumeMount
+
+	for _, volume := range service.Volumes {
+		var scheme, source, path string
+
+		if strings.Contains(volume.SourcePath, "://") {
+			parts := strings.SplitN(volume.SourcePath, "://", 2)
+			scheme = parts[0]
+			if scheme != "pvc" && scheme != "home" {
+				return nil, errors.New("Invalid scheme detected")
+			}
+			split := strings.SplitN(parts[1], "/", 2)
+			source = split[0]
+			if len(split) > 1 {
+				path = split[1]
+			}
+		} else {
+			scheme = "pvc"
+			split := strings.SplitN(volume.SourcePath, "/", 2)
+			source = split[0]
+			if len(split) > 1 {
+				path = split[1]
+			}
+		}
+
+		sourceMapKey := scheme + ":" + source
+
+		if _, exists := sourceMap[sourceMapKey]; !exists {
+			sourceMap[sourceMapKey] = template_io.Volume{
+				Scheme: scheme,
+				Source: source,
+				Path:   path,
+			}
+		}
+		details = append(details, template_io.VolumeMount{
+			Name:      sourceMapKey,
+			MountPath: path,
+			SubPath:   "",
+			ReadOnly:  false,
+		})
+	}
+
+	return details, nil
+}
+
 func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 	uuid := uuid.New()
 	id := uuid.String()
 	containers := []template_io.Container{}
+	var sourceMap map[string]template_io.Volume
 
 	if app, found := GetAppFromMap(apps, instance.AppName); found {
 		for i := 0; i < len(app.Spec.Services); i++ {
@@ -91,14 +139,19 @@ func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 				srcPort := app.Spec.Services[i].Ports[j]
 				ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
 			}
-			c := template_io.Container{
-				Name:         app.Spec.Services[i].Name,
-				Image:        app.Spec.Services[i].Image,
-				Ports:        ports,
-				Expose:       ports,
-				VolumeMounts: []template_io.VolumeMount{},
+
+			if volumeMap, err := parseVolumeSourcePath(app.Spec.Services[i], sourceMap); err == nil {
+				c := template_io.Container{
+					Name:         app.Spec.Services[i].Name,
+					Image:        app.Spec.Services[i].Image,
+					Ports:        ports,
+					Expose:       ports,
+					VolumeMounts: volumeMap,
+				}
+				containers = append(containers, c)
+			} else {
+				simpleErrorLogger(err, "parse sources failed")
 			}
-			containers = append(containers, c)
 		}
 		system := template_io.System{
 			Name:           instance.AppName,
@@ -115,7 +168,6 @@ func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 		vars["system"] = system
 
 		simpleInfoLogger(fmt.Sprintf("applying template to %v+", system))
-		// Call the function.
 		if result, err := template_io.RenderGoTemplate(xformer, "deployment", vars); err != nil {
 			simpleErrorLogger(err, "RenderGoTemplate failed")
 			return ""
@@ -126,7 +178,7 @@ func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 	return ""
 }
 
-func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, deploymentYAML string) error {
+func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxAppInstance, deploymentYAML string) error {
 	// Convert YAML string to a Deployment object
 	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(deploymentYAML), 100)
 	var deployment appsv1.Deployment
@@ -143,7 +195,7 @@ func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runt
 	}
 
 	// Set the controller reference so that the Deployment will be deleted when the HelxApp is deleted
-	if err := ctrl.SetControllerReference(&deployment, &deployment, scheme); err != nil {
+	if err := ctrl.SetControllerReference(instance, &deployment, scheme); err != nil {
 		return err
 	}
 

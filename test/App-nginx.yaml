@@ -1,0 +1,12 @@
+apiVersion: helx.renci.org/v1
+kind: HelxApp
+metadata:
+  name: nginx
+  namespace: jeffw
+spec:
+  services:
+    - name: web
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+          hostPort: 80
