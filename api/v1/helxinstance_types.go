@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// HelxAppInstanceSpec defines the desired state of HelxAppInstance
-type HelxAppInstanceSpec struct {
+// HelxInstanceSpec defines the desired state of HelxInstance
+type HelxInstanceSpec struct {
 	Identifier               string `json:"identifier,omitempty"`
 	AppName                  string `json:"appName,omitempty"`
 	Name                     string `json:"name,omitempty"`
@@ -48,33 +48,32 @@ type HelxAppInstanceSpec struct {
 	AllowPrivilegeEscalation bool   `json:"allowPrivilegeEscalation,omitempty"`
 }
 
-// HelxAppInstanceStatus defines the observed state of HelxAppInstance
-type HelxAppInstanceStatus struct {
+// HelxInstanceStatus defines the observed state of HelxInstance
+type HelxInstanceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
-// HelxAppInstance is the Schema for the helxappinstances API
-type HelxAppInstance struct {
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// HelxInstance is the Schema for the helxinstances API
+type HelxInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HelxAppInstanceSpec   `json:"spec,omitempty"`
-	Status HelxAppInstanceStatus `json:"status,omitempty"`
+	Spec   HelxInstanceSpec   `json:"spec,omitempty"`
+	Status HelxInstanceStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// HelxAppInstanceList contains a list of HelxAppInstance
-type HelxAppInstanceList struct {
+// HelxInstanceList contains a list of HelxInstance
+type HelxInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HelxAppInstance `json:"items"`
+	Items           []HelxInstance `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&HelxAppInstance{}, &HelxAppInstanceList{})
+	SchemeBuilder.Register(&HelxInstance{}, &HelxInstanceList{})
 }

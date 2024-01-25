@@ -25,8 +25,8 @@ import (
 
 // HelxAppSpec defines the desired state of HelxApp
 type HelxAppSpec struct {
-	Name     string    `json:"name"`
-	Services []Service `json:"services"`
+	ClassName string    `json:"className"`
+	Services  []Service `json:"services"`
 }
 
 // Service represents a single service in a HeLxApp

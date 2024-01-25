@@ -3,35 +3,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
-  name: manager-role
+  name: helxapp-manager-role
   namespace: jeffw
 rules:
-- apiGroups:
-  - helx.renci.org
-  resources:
-  - helxappinstances
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - helx.renci.org
-  resources:
-  - helxappinstances/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - helx.renci.org
-  resources:
-  - helxappinstances/status
-  verbs:
-  - get
-  - patch
-  - update
 - apiGroups:
   - helx.renci.org
   resources:
@@ -54,6 +28,32 @@ rules:
   - helx.renci.org
   resources:
   - helxapps/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxinstances/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxinstances/status
   verbs:
   - get
   - patch

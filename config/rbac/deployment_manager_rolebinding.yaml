@@ -2,18 +2,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
-    app.kubernetes.io/name: clusterrolebinding
-    app.kubernetes.io/instance: helxapp-manager-rolebinding
+    app.kubernetes.io/name: rolebinding
+    app.kubernetes.io/instance: helxapp-deployment-manager-rolebinding
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: builder
     app.kubernetes.io/part-of: builder
     app.kubernetes.io/managed-by: kustomize
-  name: helxapp-manager-rolebinding
+  name: helxapp-deployment-manager-rolebinding
   namespace: jeffw
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: helxapp-manager-role
+  name: helxapp-deployment-manager-role
 subjects:
 - kind: ServiceAccount
   name: helxapp-controller-manager

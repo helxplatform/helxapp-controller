@@ -3,7 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/helx.renci.org_helxapps.yaml
-- bases/helx.renci.org_helxappinstances.yaml
+- bases/helx.renci.org_helxinstances.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

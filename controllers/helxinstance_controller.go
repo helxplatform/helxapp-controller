@@ -30,8 +30,8 @@ import (
 	"github.com/helxplatform/helxapp/helxapp_operations"
 )
 
-// HelxAppInstanceReconciler reconciles a HelxAppInstance object
-type HelxAppInstanceReconciler struct {
+// HelxInstanceReconciler reconciles a HelxInstance object
+type HelxInstanceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -125,42 +125,42 @@ type TCPSocketAction struct {
 
 var initialized bool = false
 
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxappinstances/finalizers,verbs=update
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the HelxAppInstance object against the actual cluster state, and then
+// the HelxInstance object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
-func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	// Fetch the HelxAppInstance custom resource
-	helxAppInstance := &helxv1.HelxAppInstance{}
-	if err := r.Get(ctx, req.NamespacedName, helxAppInstance); err != nil {
+	// Fetch the HelxInstance custom resource
+	helxInstance := &helxv1.HelxInstance{}
+	if err := r.Get(ctx, req.NamespacedName, helxInstance); err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
-			logger.Info("HelxAppInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
+			logger.Info("HelxInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "unable to fetch HelxAppInstance", "NamespacedName", req.NamespacedName)
+		logger.Error(err, "unable to fetch HelxInstance", "NamespacedName", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Log the event and custom resource content
-	logger.Info("Reconciling HelxAppInstance", "HelxAppInstance", fmt.Sprintf("%+v", helxAppInstance))
+	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInstance))
 	if err := helxapp_operations.CheckInit(ctx); err == nil {
-		deploymentYAML := helxapp_operations.CreateDeploymentString(&helxAppInstance.Spec)
+		deploymentYAML := helxapp_operations.CreateDeploymentString(&helxInstance.Spec)
 		if deploymentYAML != "" {
 			logger.Info("generated YAML:")
 			logger.Info(deploymentYAML)
-			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxAppInstance, deploymentYAML); err != nil {
+			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, deploymentYAML); err != nil {
 				logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
 			}
 		}
@@ -169,8 +169,8 @@ func (r *HelxAppInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HelxAppInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HelxInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&helxv1.HelxAppInstance{}).
+		For(&helxv1.HelxInstance{}).
 		Complete(r)
 }

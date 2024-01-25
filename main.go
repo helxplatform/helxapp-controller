@@ -109,11 +109,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "HelxApp")
 		os.Exit(1)
 	}
-	if err = (&controllers.HelxAppInstanceReconciler{
+	if err = (&controllers.HelxInstanceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HelxAppInstance")
+		setupLog.Error(err, "unable to create controller", "controller", "HelxInstance")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

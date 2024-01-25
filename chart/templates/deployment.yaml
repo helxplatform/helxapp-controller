@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helxapp-c.fullname" . }}
+  name: {{ include "helxapp-controller.fullname" . }}
   labels:
-    {{- include "helxapp-c.labels" . | nindent 4 }}
+    {{- include "helxapp-controller.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "helxapp-c.selectorLabels" . | nindent 6 }}
+      {{- include "helxapp-controller.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "helxapp-c.selectorLabels" . | nindent 8 }}
+        {{- include "helxapp-controller.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "helxapp-c.serviceAccountName" . }}
+      serviceAccountName: {{ include "helxapp-controller.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -40,7 +40,7 @@ spec:
               containerPort: 8081
           env:
             - name: DB_HOST
-              value: {{ include "helxapp-c.fullname" . }}-{{ .Values.env.dbHost }}
+              value: {{ include "helxapp-controller.fullname" . }}-{{ .Values.env.dbHost }}
             - name: DB_NAME
               value: {{ .Values.env.dbName }}
             - name: DB_PASSWORD

@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "helxapp-c.name" -}}
+{{- define "helxapp-controller.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "helxapp-c.fullname" -}}
+{{- define "helxapp-controller.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "helxapp-c.chart" -}}
+{{- define "helxapp-controller.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "helxapp-c.labels" -}}
-helm.sh/chart: {{ include "helxapp-c.chart" . }}
-{{ include "helxapp-c.selectorLabels" . }}
+{{- define "helxapp-controller.labels" -}}
+helm.sh/chart: {{ include "helxapp-controller.chart" . }}
+{{ include "helxapp-controller.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "helxapp-c.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "helxapp-c.name" . }}
+{{- define "helxapp-controller.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "helxapp-controller.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "helxapp-c.serviceAccountName" -}}
+{{- define "helxapp-controller.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "helxapp-c.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "helxapp-controller.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

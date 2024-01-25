@@ -79,53 +79,64 @@ func CheckInit(ctx context.Context) error {
 	return nil
 }
 
+func processSingleVolume(volumeMount helxv1.VolumeMount) (template_io.Volume, template_io.VolumeMount, string, error) {
+	var scheme, source, path string
+
+	if strings.Contains(volumeMount.SourcePath, "://") {
+		parts := strings.SplitN(volumeMount.SourcePath, "://", 2)
+		scheme = parts[0]
+		if scheme != "pvc" && scheme != "home" {
+			return template_io.Volume{}, template_io.VolumeMount{}, "", errors.New("invalid scheme detected")
+		}
+		split := strings.SplitN(parts[1], "/", 2)
+		source = split[0]
+		if len(split) > 1 {
+			path = split[1]
+		}
+	} else {
+		scheme = "pvc"
+		split := strings.SplitN(volumeMount.SourcePath, "/", 2)
+		source = split[0]
+		if len(split) > 1 {
+			path = split[1]
+		}
+	}
+
+	sourceKey := scheme + ":" + source
+	templateVolume := template_io.Volume{
+		Scheme: scheme,
+		Source: source,
+		Path:   path,
+	}
+
+	templateVolumeMount := template_io.VolumeMount{
+		Name:      sourceKey,
+		MountPath: path,
+		SubPath:   "",
+		ReadOnly:  false,
+	}
+
+	return templateVolume, templateVolumeMount, sourceKey, nil
+}
+
 func parseVolumeSourcePath(service helxv1.Service, sourceMap map[string]template_io.Volume) ([]template_io.VolumeMount, error) {
 	var details []template_io.VolumeMount
 
-	for _, volume := range service.Volumes {
-		var scheme, source, path string
-
-		if strings.Contains(volume.SourcePath, "://") {
-			parts := strings.SplitN(volume.SourcePath, "://", 2)
-			scheme = parts[0]
-			if scheme != "pvc" && scheme != "home" {
-				return nil, errors.New("Invalid scheme detected")
-			}
-			split := strings.SplitN(parts[1], "/", 2)
-			source = split[0]
-			if len(split) > 1 {
-				path = split[1]
-			}
-		} else {
-			scheme = "pvc"
-			split := strings.SplitN(volume.SourcePath, "/", 2)
-			source = split[0]
-			if len(split) > 1 {
-				path = split[1]
-			}
+	for _, volumeMount := range service.Volumes {
+		templateVolume, templateVolumeMount, sourceKey, err := processSingleVolume(volumeMount)
+		if err != nil {
+			return nil, err
 		}
-
-		sourceMapKey := scheme + ":" + source
-
-		if _, exists := sourceMap[sourceMapKey]; !exists {
-			sourceMap[sourceMapKey] = template_io.Volume{
-				Scheme: scheme,
-				Source: source,
-				Path:   path,
-			}
+		if _, found := sourceMap[sourceKey]; !found {
+			sourceMap[sourceKey] = templateVolume
 		}
-		details = append(details, template_io.VolumeMount{
-			Name:      sourceMapKey,
-			MountPath: path,
-			SubPath:   "",
-			ReadOnly:  false,
-		})
+		details = append(details, templateVolumeMount)
 	}
 
 	return details, nil
 }
 
-func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
+func CreateDeploymentString(instance *helxv1.HelxInstanceSpec) string {
 	uuid := uuid.New()
 	id := uuid.String()
 	containers := []template_io.Container{}
@@ -178,7 +189,7 @@ func CreateDeploymentString(instance *helxv1.HelxAppInstanceSpec) string {
 	return ""
 }
 
-func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxAppInstance, deploymentYAML string) error {
+func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInstance, deploymentYAML string) error {
 	// Convert YAML string to a Deployment object
 	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(deploymentYAML), 100)
 	var deployment appsv1.Deployment

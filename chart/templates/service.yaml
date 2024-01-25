@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "helxapp-c.fullname" . }}
+  name: {{ include "helxapp-controller.fullname" . }}
   labels:
-    {{- include "helxapp-c.labels" . | nindent 4 }}
+    {{- include "helxapp-controller.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "helxapp-c.selectorLabels" . | nindent 4 }}
+    {{- include "helxapp-controller.selectorLabels" . | nindent 4 }}
 {{- end }}
