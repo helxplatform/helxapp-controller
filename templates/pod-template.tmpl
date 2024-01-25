@@ -27,8 +27,9 @@ metadata:
   image: {{ $container.Image }}
   {{- templateToString "containerPorts" $context | indent 2 }}
   {{- templateToString "containerResources" $context | indent 2 }}
-  {{- template "containerLivenessProbe" $context }}
-  {{- template "containerReadinessProbe" $context }}
+  {{- templateToString "containerLivenessProbe" $context | indent 2 }}
+  {{- templateToString "containerReadinessProbe" $context | indent 2}}
+  {{- templateToString "containerVolumeMounts" $context | indent 2 }}
 {{- end -}}
 {{- end -}}
 {{- end -}}

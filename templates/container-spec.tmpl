@@ -137,16 +137,6 @@ resources:
 
 {{define "containerVolumeMounts"}}
 volumeMounts:
-  {{if .System.IrodsEnabled}}
-  - name: nfs
-    mountPath: "/home/nfs"
-  {{end}}
-  {{if .System.GiteaIntegration}}
-  - name: "{{.System.UsernameAllHyphens}}-id-gitea"
-    mountPath: "{{.System.ParentDir}}/{{.System.SubpathDir}}/.ssh/id_gitea"
-    subPath: id_gitea
-    readOnly: true
-  {{end}}
   {{if .Container.Volumes}}
     {{range $volume := .Container.Volumes}}
       {{ if eq .Container.Name $volume.ContainerName }}

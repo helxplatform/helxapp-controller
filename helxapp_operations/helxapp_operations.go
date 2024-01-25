@@ -79,7 +79,7 @@ func CheckInit(ctx context.Context) error {
 	return nil
 }
 
-func processSingleVolume(volumeMount helxv1.VolumeMount) (template_io.Volume, template_io.VolumeMount, string, error) {
+func processVolumeMount(volumeMount helxv1.VolumeMount) (template_io.Volume, template_io.VolumeMount, string, error) {
 	var scheme, source, path string
 
 	if strings.Contains(volumeMount.SourcePath, "://") {
@@ -123,14 +123,14 @@ func parseVolumeSourcePath(service helxv1.Service, sourceMap map[string]template
 	var details []template_io.VolumeMount
 
 	for _, volumeMount := range service.Volumes {
-		templateVolume, templateVolumeMount, sourceKey, err := processSingleVolume(volumeMount)
+		templateVolume, templateVolumeMount, sourceKey, err := processVolumeMount(volumeMount)
 		if err != nil {
 			return nil, err
 		}
 		if _, found := sourceMap[sourceKey]; !found {
 			sourceMap[sourceKey] = templateVolume
+			details = append(details, templateVolumeMount)
 		}
-		details = append(details, templateVolumeMount)
 	}
 
 	return details, nil
@@ -151,13 +151,13 @@ func CreateDeploymentString(instance *helxv1.HelxInstanceSpec) string {
 				ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
 			}
 
-			if volumeMap, err := parseVolumeSourcePath(app.Spec.Services[i], sourceMap); err == nil {
+			if volumeList, err := parseVolumeSourcePath(app.Spec.Services[i], sourceMap); err == nil {
 				c := template_io.Container{
 					Name:         app.Spec.Services[i].Name,
 					Image:        app.Spec.Services[i].Image,
 					Ports:        ports,
 					Expose:       ports,
-					VolumeMounts: volumeMap,
+					VolumeMounts: volumeList,
 				}
 				containers = append(containers, c)
 			} else {
