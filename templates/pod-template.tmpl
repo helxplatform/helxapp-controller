@@ -13,14 +13,14 @@ metadata:
 {{- end -}}
 
 {{- define "containerList" }}
-{{- with $dot := . -}}
-{{- range $index,$container := .system.Containers -}}
+{{- with $dot := . }}
+{{- range $index,$container := .system.Containers }}
 {{- with $context := dict "system" $dot.system "container" $container }}
 - name: {{ $container.Name }}
-  {{- if or $container.SecurityContext.RunAsUser $container.SecurityContext.RunAsGroup $container.SecurityContext.FsGroup -}}
+  {{- if or $container.SecurityContext.RunAsUser $container.SecurityContext.RunAsGroup $container.SecurityContext.FsGroup }}
   {{- template "securityContext" $container.SecurityContext }}
-  {{- end -}}
-  {{- if $container.Command -}}
+  {{- end }}
+  {{- if $container.Command }}
   command: {{ $container.Command }}
   {{- end }}
   {{- templateToString "containerEnv" $context | indent 2 }}
@@ -28,12 +28,12 @@ metadata:
   {{- templateToString "containerPorts" $context | indent 2 }}
   {{- templateToString "containerResources" $context | indent 2 }}
   {{- templateToString "containerLivenessProbe" $context | indent 2 }}
-  {{- templateToString "containerReadinessProbe" $context | indent 2}}
-  {{- templateToString "containerVolumeMounts" $context | indent 2 }}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+  {{- templateToString "containerReadinessProbe" $context | indent 2 }}
+  {{- templateToString "containerVolumeMounts" $container | indent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{- define "podProps" }}
   {{- if hasGPU .system.Containers -}}

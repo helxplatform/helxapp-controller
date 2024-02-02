@@ -136,21 +136,21 @@ resources:
 {{- end -}}
 
 {{define "containerVolumeMounts"}}
+{{- if .VolumeMounts }}
 volumeMounts:
-  {{if .Container.Volumes}}
-    {{range $volume := .Container.Volumes}}
-      {{ if eq .Container.Name $volume.ContainerName }}
-      - name: "{{$volume.Name}}"
-        mountPath: "{{$volume.Path}}"
-        subPath: "{{$volume.Subpath}}"
-        readOnly: false
-      {{end}}
-    {{end}}
-  {{end}}
-{{end}}
+  {{- range $volumeMount := .VolumeMounts }}
+  - name: "{{ $volumeMount.Name }}"
+    mountPath: "{{ $volumeMount.MountPath }}"
+    {{- if ne $volumeMount.SubPath "" -}}
+    subPath: "{{ $volumeMount.SubPath }}"
+    {{- end }}
+    readOnly: "{{ $volumeMount.ReadOnly }}"
+  {{- end }}
+{{- end -}}
+{{- end -}}
 
-{{define "containerLivenessProbe"}}
-{{ if .Container.LivenessProbe }}
+{{- define "containerLivenessProbe" }}
+{{- if .Container.LivenessProbe }}
   livenessProbe:
     {{ if and .Container.LivenessProbe.Exec .Container.LivenessProbe.Exec.Command }}
     exec:
@@ -182,11 +182,11 @@ volumeMounts:
     {{ if .Container.LivenessProbe.FailureThreshold }}
     failureThreshold: {{ .Container.LivenessProbe.FailureThreshold }}
     {{ end }}
-{{ end }}
-{{end}}
+{{- end }}
+{{- end }}
 
 {{define "containerReadinessProbe"}}
-{{ if .Container.ReadinessProbe }}
+{{- if .Container.ReadinessProbe }}
   readinessProbe:
     {{ if and .Container.ReadinessProbe.Exec .Container.ReadinessProbe.Exec.Command }}
     exec:
@@ -218,23 +218,11 @@ volumeMounts:
     {{ if .Container.ReadinessProbe.FailureThreshold }}
     failureThreshold: {{ .Container.ReadinessProbe.FailureThreshold }}
     {{ end }}
-{{ end }}
-{{end}}
+{{- end }}
+{{- end }}
 
 {{define "templateVolumes"}}
 volumes:
-  {{ if .System.IrodsEnabled }}
-  - name: nfs
-    nfs:
-      server: {{ .System.NfsrodsHost }}
-      path: /
-  {{ end }}
-  {{ if .System.GiteaIntegration }}
-  - name: {{ .System.UsernameAllHyphens }}-id-gitea
-    secret:
-      secretName: {{ .System.UsernameAllHyphens }}-id-gitea
-      defaultMode: 0600
-  {{ end }}
   {{ range $container := .System.Containers }}
   {{ if .Container.Volumes }}
     {{ range $volume := .System.Volumes }}

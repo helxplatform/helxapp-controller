@@ -97,7 +97,13 @@ func TestRenderNginx(t *testing.T) {
 						GPU:    "0",
 					},
 				},
-				VolumeMounts: []VolumeMount{},
+				VolumeMounts: []VolumeMount{
+					{
+						Name:      "v",
+						MountPath: "/mnt/v",
+						ReadOnly:  false,
+					},
+				},
 			},
 		},
 	}
