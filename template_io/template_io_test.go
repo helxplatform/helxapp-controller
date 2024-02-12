@@ -7,11 +7,12 @@ import (
 )
 
 var testTemplate *template.Template
+var storage map[string][]string
 
 func TestInitGoTemplate(t *testing.T) {
 	var err error
 
-	testTemplate, err = ParseTemplates("../templates", nil)
+	testTemplate, storage, err = ParseTemplates("../templates", nil)
 	if err != nil {
 		t.Errorf("failed to initialize Go template: %v", err)
 	}
@@ -97,12 +98,34 @@ func TestRenderNginx(t *testing.T) {
 						GPU:    "0",
 					},
 				},
-				VolumeMounts: []VolumeMount{
+				VolumeMounts: []*VolumeMount{
 					{
-						Name:      "v",
-						MountPath: "/mnt/v",
+						Name:      "v1",
+						MountPath: "/mnt/v1",
 						ReadOnly:  false,
 					},
+					{
+						Name:      "v2",
+						MountPath: "/mnt/v2",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
+		Volumes: map[string]Volume{
+			"v1": {
+				Name:   "v1",
+				Scheme: "pvc",
+				Attr: map[string]string{
+					"claim": "pvcsrc",
+				},
+			},
+			"v2": {
+				Name:   "v2",
+				Scheme: "nfs",
+				Attr: map[string]string{
+					"server": "s",
+					"path":   "/x/y",
 				},
 			},
 		},

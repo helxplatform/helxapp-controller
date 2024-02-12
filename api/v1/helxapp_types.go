@@ -35,7 +35,7 @@ type Service struct {
 	Image       string            `json:"image"`
 	Ports       []ServicePort     `json:"ports,omitempty"`
 	Environment map[string]string `json:"environment,omitempty"`
-	Volumes     []VolumeMount     `json:"volumes,omitempty"`
+	Volumes     map[string]string `json:"volumes,omitempty"`
 	Replicas    int32             `json:"replicas,omitempty"`
 }
 
@@ -43,12 +43,6 @@ type Service struct {
 type ServicePort struct {
 	ContainerPort int32 `json:"containerPort"`
 	HostPort      int32 `json:"hostPort,omitempty"`
-}
-
-// VolumeMount represents a single volume mount for a service in a HeLxApp
-type VolumeMount struct {
-	MountPath  string `json:"mountPath"`
-	SourcePath string `json:"sourcePath"`
 }
 
 // HelxAppStatus defines the observed state of HelxApp

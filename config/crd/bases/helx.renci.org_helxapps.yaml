@@ -68,19 +68,9 @@ spec:
                       format: int32
                       type: integer
                     volumes:
-                      items:
-                        description: VolumeMount represents a single volume mount
-                          for a service in a HeLxApp
-                        properties:
-                          mountPath:
-                            type: string
-                          sourcePath:
-                            type: string
-                        required:
-                        - mountPath
-                        - sourcePath
-                        type: object
-                      type: array
+                      additionalProperties:
+                        type: string
+                      type: object
                   required:
                   - image
                   - name

@@ -47,9 +47,27 @@ metadata:
   {{- end -}}
 {{- end -}}
 
+{{- define "podVolumes" }}
+{{- if gt (len .system.Volumes) 0 }}
+volumes:
+  {{- range $name,$volume := .system.Volumes }}
+  - name: {{ $volume.Name }}
+    {{- if eq $volume.Scheme "pvc" }}
+    persistentVolumeClaim:
+      claimName: {{ $volume.Attr.claim }}
+    {{- else if eq $volume.Scheme "nfs" }}
+    nfs:
+      server: {{ $volume.Attr.server }}
+      path: {{ $volume.Attr.path }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "podSpec" }}
 spec:
   {{- template "podProps" . }}
   containers:
   {{- templateToString "containerList" . | indent 4 }}
+  {{- templateToString "podVolumes" . | indent 2 }}
 {{- end }}

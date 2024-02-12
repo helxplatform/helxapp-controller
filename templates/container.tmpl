@@ -136,7 +136,7 @@ resources:
 {{- end -}}
 
 {{define "containerVolumeMounts"}}
-{{- if .VolumeMounts }}
+{{- if gt (len .VolumeMounts) 0 }}
 volumeMounts:
   {{- range $volumeMount := .VolumeMounts }}
   - name: "{{ $volumeMount.Name }}"
@@ -144,10 +144,10 @@ volumeMounts:
     {{- if ne $volumeMount.SubPath "" -}}
     subPath: "{{ $volumeMount.SubPath }}"
     {{- end }}
-    readOnly: "{{ $volumeMount.ReadOnly }}"
+    readOnly: {{ $volumeMount.ReadOnly }}
   {{- end }}
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{- end }}
 
 {{- define "containerLivenessProbe" }}
 {{- if .Container.LivenessProbe }}
@@ -220,20 +220,3 @@ volumeMounts:
     {{ end }}
 {{- end }}
 {{- end }}
-
-{{define "templateVolumes"}}
-volumes:
-  {{ range $container := .System.Containers }}
-  {{ if .Container.Volumes }}
-    {{ range $volume := .System.Volumes }}
-      {{ if eq .Container.Name $volume.ContainerName }}
-        {{ if $volume.PvcName }}
-        - name: {{ $volume.VolumeName }}
-          persistentVolumeClaim:
-            claimName: {{ $volume.PvcName }}
-        {{ end }}
-      {{ end }}
-    {{ end }}
-  {{ end }}
-  {{ end }}
-{{end}}

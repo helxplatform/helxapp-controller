@@ -156,12 +156,23 @@ func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// Log the event and custom resource content
 	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInstance))
 	if err := helxapp_operations.CheckInit(ctx); err == nil {
-		deploymentYAML := helxapp_operations.CreateDeploymentString(&helxInstance.Spec)
-		if deploymentYAML != "" {
-			logger.Info("generated YAML:")
-			logger.Info(deploymentYAML)
-			if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, deploymentYAML); err != nil {
-				logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
+		if artifacts, err := helxapp_operations.CreateDeploymentArtifacts(&helxInstance.Spec); err == nil {
+			if artifacts.DeploymentString != "" {
+				logger.Info("generated Deployment YAML:")
+				logger.Info(artifacts.DeploymentString)
+				if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, artifacts.DeploymentString); err != nil {
+					logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
+				} else {
+					for name, PVCString := range artifacts.PVCStrings {
+						if PVCString != "" {
+							logger.Info("generated PVC YAML:")
+							logger.Info(PVCString)
+							if err = helxapp_operations.CreatePVCFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, PVCString); err != nil {
+								logger.Error(err, "unable to create pvc", "PVCName", name, "NamespacedName", req.NamespacedName)
+							}
+						}
+					}
+				}
 			}
 		}
 	}

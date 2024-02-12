@@ -26,7 +26,7 @@ type System struct {
 	SecurityContext SecurityContext
 	Containers      []Container
 	InitContainers  []Container
-	Volumes         []Volume
+	Volumes         map[string]Volume
 }
 
 type SecurityContext struct {
@@ -43,7 +43,7 @@ type Container struct {
 	Ports           []Port
 	Expose          []Port
 	Resources       ResourceRequirements
-	VolumeMounts    []VolumeMount
+	VolumeMounts    []*VolumeMount
 	SecurityContext SecurityContext
 	LivenessProbe   *Probe
 	ReadinessProbe  *Probe
@@ -102,9 +102,9 @@ type TCPSocketAction struct {
 }
 
 type Volume struct {
-	Source string
+	Name   string
 	Scheme string
-	Path   string
+	Attr   map[string]string
 }
 
 func RenderTemplateToString(tmpl *template.Template, name string, data interface{}) string {
@@ -127,16 +127,28 @@ func HasGPU(containers []Container) bool {
 	return false
 }
 
-func ParseTemplates(dir string, log func(string)) (*template.Template, error) {
+func store(storage map[string][]string, name, value string) string {
+	if arr, found := storage[name]; !found {
+		arr = []string{}
+		arr = append(arr, value)
+		storage[name] = arr
+	} else {
+		storage[name] = append(arr, value)
+	}
+	return value // Return the value to not interfere with the template output
+}
+
+func ParseTemplates(dir string, log func(string)) (*template.Template, map[string][]string, error) {
+	storage := make(map[string][]string)
 	// Get a list of all .tmpl files in the directory
 	files, err := filepath.Glob(filepath.Join(dir, "*.tmpl"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// No templates in the directory
 	if len(files) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var tmpl *template.Template
@@ -152,15 +164,19 @@ func ParseTemplates(dir string, log func(string)) (*template.Template, error) {
 
 	funcMap["hasGPU"] = HasGPU
 
+	funcMap["store"] = func(name, value string) string {
+		return store(storage, name, value)
+	}
+
 	tmpl = template.New("").Funcs(funcMap)
 
 	// Parse all .tmpl files in the directory
 	tmpl, err = tmpl.ParseFiles(files...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return tmpl, nil
+	return tmpl, storage, nil
 }
 
 func RenderGoTemplate(tmpl *template.Template, templateName string, context map[string]interface{}) (string, error) {
