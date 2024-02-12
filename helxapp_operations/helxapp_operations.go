@@ -95,7 +95,7 @@ func CheckInit(ctx context.Context) error {
 
 func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_io.VolumeMount, error) {
 	attr := make(map[string]string)
-	pattern := `^(?:(pvc|nfs)(:\/\/))?([^:#,]+):([^:#,]+)(?:#([^:#,]*))?(?:,(([^:#,=]+=[^:#,=]+)(?:,([^:#,=]+=[^:#,=]+))*))?$`
+	pattern := `^(?:(pvc|nfs)(:\/\/))?([^:#,]+):([^:#,]+)(?:#([^:#,]*))?(?:,(([^:#,=]+(?:=[^:#,=]+)?)(?:,([^:#,=]+(?:=[^:#,=]+)?))*))?$`
 	re := regexp.MustCompile(pattern)
 
 	matches := re.FindStringSubmatch(volumeStr)
@@ -116,9 +116,14 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 	// Parsing options into a map
 	optionMap := make(map[string]string)
 	if options != "" {
-		optionPairs := regexp.MustCompile(`([^:#,=]+)=([^:#,=]+)`)
+		optionPairs := regexp.MustCompile(`([^:#,=]+)(?:=([^:#,=]+))?`)
 		for _, pair := range optionPairs.FindAllStringSubmatch(options, -1) {
-			optionMap[pair[1]] = pair[2]
+			key := pair[1]
+			value := "true" // Default to "true" if no explicit value
+			if len(pair) > 2 && pair[2] != "" {
+				value = pair[2]
+			}
+			optionMap[key] = value
 		}
 	}
 

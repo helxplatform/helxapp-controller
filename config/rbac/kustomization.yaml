@@ -9,6 +9,8 @@ resources:
 - role_binding.yaml
 - deployment_manager_role.yaml
 - deployment_manager_rolebinding.yaml
+- pvc_manager_role.yaml
+- pvc_manager_rolebinding.yaml
 # Permits interacting configmaps, leases, events
 # This is available by default for namespace owners
 #

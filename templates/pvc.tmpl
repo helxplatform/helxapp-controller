@@ -2,14 +2,26 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .name }}
+  name: {{ .volume.Attr.claim }}
 spec:
   accessModes:
-    - {{ .accessMode }}
+    {{- if .volume.Attr.rwx }}
+    - ReadWriteMany
+    {{- else if .volume.Attr.rox }}
+    - ReadOnlyMany
+    {{- else if .volume.Attr.rwop }}
+    - ReadWriteOncePod
+    {{- else }}
+    - ReadWriteOnce
+    {{- end }}
   resources:
     requests:
-      storage: {{ .size }}
-  {{- if .storageClass }}
-  storageClassName: {{ .storageClass }}
+      {{- if .volume.Attr.size }}
+      storage: {{ .volume.Attr.size }}
+      {{- else }}
+      storage: 1G
+      {{- end }}
+  {{- if .volume.Attr.storageClass }}
+  storageClassName: {{ .volume.attr.storageClass }}
   {{- end }}
 {{- end }}
