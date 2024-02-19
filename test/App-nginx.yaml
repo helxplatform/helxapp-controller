@@ -4,7 +4,7 @@ metadata:
   name: nginx
   namespace: jeffw
 spec:
-  className: nginx
+  name: nginx
   services:
     - name: web
       image: nginx:latest

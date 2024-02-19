@@ -1,0 +1,15 @@
+apiVersion: helx.renci.org/v1
+kind: HelxInstance
+metadata:
+  name: jupyterlab1
+spec:
+  appName: "jupyterlab1"
+  username: "jeffw"
+  resources:
+    jupyterlab:
+      request:
+        cpu: "2"
+        memory: "1G"
+      limit:
+        cpu: "2"
+        memory: "1.1G"

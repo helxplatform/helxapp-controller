@@ -42,7 +42,7 @@ type Container struct {
 	Env             []EnvVar
 	Ports           []Port
 	Expose          []Port
-	Resources       ResourceRequirements
+	Resources       Resources
 	VolumeMounts    []*VolumeMount
 	SecurityContext SecurityContext
 	LivenessProbe   *Probe
@@ -59,15 +59,9 @@ type Port struct {
 	Protocol      string
 }
 
-type ResourceRequirements struct {
-	Limits   *ResourceList
-	Requests *ResourceList
-}
-
-type ResourceList struct {
-	CPU    string
-	Memory string
-	GPU    string
+type Resources struct {
+	Limits   map[string]string
+	Requests map[string]string
 }
 
 type VolumeMount struct {
@@ -116,17 +110,6 @@ func RenderTemplateToString(tmpl *template.Template, name string, data interface
 	return buf.String()
 }
 
-func HasGPU(containers []Container) bool {
-	for _, container := range containers {
-		limits := container.Resources.Limits
-		requests := container.Resources.Requests
-		if limits != nil && limits.GPU != "0" || requests != nil && requests.GPU != "0" {
-			return true
-		}
-	}
-	return false
-}
-
 func store(storage map[string][]string, name, value string) string {
 	if arr, found := storage[name]; !found {
 		arr = []string{}
@@ -161,8 +144,6 @@ func ParseTemplates(dir string, log func(string)) (*template.Template, map[strin
 		}
 		return RenderTemplateToString(tmpl, name, data)
 	}
-
-	funcMap["hasGPU"] = HasGPU
 
 	funcMap["store"] = func(name, value string) string {
 		return store(storage, name, value)

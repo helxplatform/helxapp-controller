@@ -1,8 +1,7 @@
 apiVersion: helx.renci.org/v1
 kind: HelxInstance
 metadata:
-  name: nginx-1
+  name: nginx
 spec:
   appName: "nginx"
-  name: "nginx-i1"
   username: "jeffw"

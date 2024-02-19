@@ -41,37 +41,34 @@ spec:
                 type: string
               appName:
                 type: string
-              connString:
-                type: string
               fsGroup:
                 type: integer
-              giteaHost:
-                type: string
-              giteaIntegration:
-                type: boolean
-              giteaServiceName:
-                type: string
-              giteaUser:
-                type: string
-              host:
-                type: string
               identifier:
-                type: string
-              name:
                 type: string
               namespace:
                 type: string
               privileged:
                 type: boolean
+              resources:
+                additionalProperties:
+                  description: ServicePort represents a single port for a service
+                    in a HeLxApp
+                  properties:
+                    limit:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    request:
+                      additionalProperties:
+                        type: string
+                      type: object
+                  type: object
+                type: object
               runAsGroup:
                 type: integer
               runAsUser:
                 type: integer
-              runLevel:
-                type: integer
               serviceaccount:
-                type: string
-              sourceText:
                 type: string
               supplementalGroups:
                 items:

@@ -86,16 +86,14 @@ func TestRenderNginx(t *testing.T) {
 						Protocol:      "TCP",
 					},
 				},
-				Resources: ResourceRequirements{
-					Limits: &ResourceList{
-						CPU:    "1",
-						Memory: "1Gi",
-						GPU:    "0",
+				Resources: Resources{
+					Limits: map[string]string{
+						"cpu":    "1",
+						"memory": "1Gi",
 					},
-					Requests: &ResourceList{
-						CPU:    "0.5",
-						Memory: "500Mi",
-						GPU:    "0",
+					Requests: map[string]string{
+						"cpu":    "0.5",
+						"memory": "500Mi",
 					},
 				},
 				VolumeMounts: []*VolumeMount{

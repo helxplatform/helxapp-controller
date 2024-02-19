@@ -36,95 +36,6 @@ type HelxInstanceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-type System struct {
-	Name                string
-	AMB                 bool
-	SystemEnv           []EnvVar
-	Username            string
-	SystemName          string
-	Host                string
-	Identifier          string
-	AppID               string
-	EnableInitContainer bool
-	CreateHomeDirs      bool
-	DevPhase            string
-	SecurityContext     SecurityContext
-	Containers          []Container
-}
-
-type SecurityContext struct {
-	RunAsUser  int
-	RunAsGroup int
-	FsGroup    int
-}
-
-type Container struct {
-	Name           string
-	Image          string
-	Command        []string
-	Env            []EnvVar
-	Ports          []Port
-	Expose         []Port
-	Resources      ResourceRequirements
-	VolumeMounts   []VolumeMount
-	LivenessProbe  *Probe
-	ReadinessProbe *Probe
-}
-
-type EnvVar struct {
-	Name  string
-	Value string
-}
-
-type Port struct {
-	ContainerPort int
-	Protocol      string
-}
-
-type ResourceRequirements struct {
-	Limits   ResourceList
-	Requests ResourceList
-}
-
-type ResourceList struct {
-	CPU    string
-	Memory string
-	GPU    string
-}
-
-type VolumeMount struct {
-	Name      string
-	MountPath string
-	SubPath   string
-	ReadOnly  bool
-}
-
-type Probe struct {
-	Exec                *ExecAction
-	HTTPGet             *HTTPGetAction
-	TCPSocket           *TCPSocketAction
-	InitialDelaySeconds int32
-	PeriodSeconds       int32
-	FailureThreshold    int32
-}
-
-type ExecAction struct {
-	Command []string
-}
-
-type HTTPGetAction struct {
-	Path        string
-	Port        int32
-	Scheme      string
-	HttpHeaders map[string]string
-}
-
-type TCPSocketAction struct {
-	Port int32
-}
-
-var initialized bool = false
-
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/finalizers,verbs=update
@@ -157,7 +68,7 @@ func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInstance))
 	if err := helxapp_operations.CheckInit(ctx); err == nil {
 		if artifacts, err := helxapp_operations.CreateDeploymentArtifacts(&helxInstance.Spec); err == nil {
-			if artifacts.DeploymentString != "" {
+			if artifacts != nil && artifacts.DeploymentString != "" {
 				logger.Info("generated Deployment YAML:")
 				logger.Info(artifacts.DeploymentString)
 				if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, artifacts.DeploymentString); err != nil {

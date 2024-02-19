@@ -93,6 +93,39 @@ func CheckInit(ctx context.Context) error {
 	return nil
 }
 
+/*
+ProcessVolume parses a volume string according to the following BNF specification:
+
+<volume-source> ::= [<scheme> "://"] <source>
+<source>        ::= <src> ":" <mntpoint> ["#" <subpath>] ["," <optionlist>]
+<optionlist>    ::= <option> ["," <optionlist>]
+<option>        ::= <key> ["=" <value>]
+<key>           ::= <string>
+<value>         ::= <string>
+
+Where:
+  - <scheme> can be "pvc" or "nfs". If omitted, defaults to "pvc".
+  - <src> is the source of the volume.
+  - <mntpoint> is the mount point for the volume.
+  - <subpath> (optional) is a subpath within the volume.
+  - <optionlist> (optional) is a comma-separated list of options. Each option can
+    be a key-value pair (<key>=<value>) or a single key, in which case the value
+    defaults to "true".
+  - <string> represents a sequence of characters where ":", "#", ",", and "=" are
+    disallowed, except as delimiters within the structure.
+
+The pattern used to parse the volume string accommodates these rules, allowing
+for flexible volume specification with optional default values for omitted parts.
+
+Example volume strings:
+- "pvc://myvolume:/mnt"
+- "nfs://server/path:/mnt#subpath,opt1=val1,opt2"
+- "myvolume:/mnt,opt1,opt2=val2"
+
+This function returns a pointer to a Volume and VolumeMount object populated
+based on the parsed input, or an error if the input does not match the expected
+format.
+*/
 func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_io.VolumeMount, error) {
 	attr := make(map[string]string)
 	pattern := `^(?:(pvc|nfs)(:\/\/))?([^:#,]+):([^:#,]+)(?:#([^:#,]*))?(?:,(([^:#,=]+(?:=[^:#,=]+)?)(?:,([^:#,=]+(?:=[^:#,=]+)?))*))?$`
@@ -190,6 +223,7 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 	if app, found := GetAppFromMap(apps, instance.AppName); found {
 		for i := 0; i < len(app.Spec.Services); i++ {
 			ports := []template_io.Port{}
+			name := app.Spec.Services[i].Name
 
 			for j := 0; j < len(app.Spec.Services[i].Ports); j++ {
 				srcPort := app.Spec.Services[i].Ports[j]
@@ -197,11 +231,19 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 			}
 
 			if volumeList, err := parseServiceVolume(app.Spec.Services[i], sourceMap); err == nil {
+				resources := template_io.Resources{}
+
+				if resource, found := instance.Resources[name]; found {
+					resources.Limits = resource.Limits
+					resources.Requests = resource.Requests
+				}
+
 				c := template_io.Container{
-					Name:         app.Spec.Services[i].Name,
+					Name:         name,
 					Image:        app.Spec.Services[i].Image,
 					Ports:        ports,
 					Expose:       ports,
+					Resources:    resources,
 					VolumeMounts: volumeList,
 				}
 				containers = append(containers, c)

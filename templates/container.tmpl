@@ -106,32 +106,20 @@ ports:
 {{- end -}}
 
 {{- define "containerResources" }}
-{{- if or .container.Resources.Limits .container.Resources.Requests }}
+{{- if or .Resources.Limits .Resources.Requests }}
 resources:
-  limits:
-  {{- if .container.Resources.Limits -}}
-  {{- if .container.Resources.Limits.CPU }}
-    cpu: "{{ .container.Resources.Limits.CPU }}"
-  {{- end -}}
-  {{- if .container.Resources.Limits.Memory }}
-    memory: "{{.container.Resources.Limits.Memory }}"
-  {{- end -}}
-  {{- if .container.Resources.Limits.GPU }}
-    nvidia.com/gpu: {{ .container.Resources.Limits.GPU }}
-  {{- end -}}
-  {{- end }}
+  {{- if .Resources.Requests }}
   requests:
-  {{- if .container.Resources.Requests -}}
-  {{- if .container.Resources.Requests.CPU }}
-    cpu: "{{ .container.Resources.Requests.CPU }}"
+    {{- range $name,$value := .Resources.Requests }}
+    {{ $name }}: {{ $value }}
+    {{- end }}
   {{- end -}}
-  {{- if .container.Resources.Requests.Memory }}
-    memory: "{{.container.Resources.Requests.Memory }}"
+  {{- if .Resources.Limits }}
+  limits:
+    {{- range $name,$value := .Resources.Limits }}
+    {{ $name }}: {{ $value }}
+    {{- end }}
   {{- end }}
-  {{- if .container.Resources.Requests.GPU }}
-    nvidia.com/gpu: {{ .container.Resources.Requests.GPU }}
-  {{- end }}
-  {{- end -}}
 {{- end -}}
 {{- end -}}
 

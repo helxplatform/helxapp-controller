@@ -35,7 +35,7 @@ spec:
           spec:
             description: HelxAppSpec defines the desired state of HelxApp
             properties:
-              className:
+              name:
                 type: string
               services:
                 items:
@@ -64,9 +64,19 @@ spec:
                         - containerPort
                         type: object
                       type: array
-                    replicas:
-                      format: int32
-                      type: integer
+                    rlimits:
+                      items:
+                        description: ServicePort represents a single port for a service
+                          in a HeLxApp
+                        properties:
+                          max:
+                            type: string
+                          min:
+                            type: string
+                          name:
+                            type: string
+                        type: object
+                      type: array
                     volumes:
                       additionalProperties:
                         type: string
@@ -76,8 +86,9 @@ spec:
                   - name
                   type: object
                 type: array
+              sourceText:
+                type: string
             required:
-            - className
             - services
             type: object
           status:

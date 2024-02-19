@@ -26,7 +26,7 @@ metadata:
   {{- templateToString "containerEnv" $context | indent 2 }}
   image: {{ $container.Image }}
   {{- templateToString "containerPorts" $context | indent 2 }}
-  {{- templateToString "containerResources" $context | indent 2 }}
+  {{- templateToString "containerResources" $container | indent 2 }}
   {{- templateToString "containerLivenessProbe" $context | indent 2 }}
   {{- templateToString "containerReadinessProbe" $context | indent 2 }}
   {{- templateToString "containerVolumeMounts" $container | indent 2 }}
@@ -36,9 +36,6 @@ metadata:
 {{- end }}
 
 {{- define "podProps" }}
-  {{- if hasGPU .system.Containers -}}
-  {{- template "gpuTolerations" . }}
-  {{- end -}}
   {{- if or .system.SecurityContext.RunAsUser .system.SecurityContext.RunAsGroup .system.SecurityContext.FsGroup -}}
   {{- template "securityContext" .system.SecurityContext }}
   {{- end -}}

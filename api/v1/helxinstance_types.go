@@ -25,27 +25,25 @@ import (
 
 // HelxInstanceSpec defines the desired state of HelxInstance
 type HelxInstanceSpec struct {
-	Identifier               string `json:"identifier,omitempty"`
-	AppName                  string `json:"appName,omitempty"`
-	Name                     string `json:"name,omitempty"`
-	SourceText               string `json:"sourceText,omitempty"`
-	AmbassadorId             string `json:"ambassadorId,omitempty"`
-	Username                 string `json:"username,omitempty"`
-	Host                     string `json:"host,omitempty"`
-	Namespace                string `json:"namespace,omitempty"`
-	Serviceaccount           string `json:"serviceaccount,omitempty"`
-	ConnString               string `json:"connString,omitempty"`
-	GiteaIntegration         bool   `json:"giteaIntegration,omitempty"`
-	GiteaHost                string `json:"giteaHost,omitempty"`
-	GiteaUser                string `json:"giteaUser,omitempty"`
-	GiteaServiceName         string `json:"giteaServiceName,omitempty"`
-	RunLevel                 int    `json:"runLevel,omitempty"`
-	RunAsUser                int    `json:"runAsUser,omitempty"`
-	RunAsGroup               int    `json:"runAsGroup,omitempty"`
-	FsGroup                  int    `json:"fsGroup,omitempty"`
-	SupplementalGroups       []int  `json:"supplementalGroups,omitempty"`
-	Privileged               bool   `json:"privileged,omitempty"`
-	AllowPrivilegeEscalation bool   `json:"allowPrivilegeEscalation,omitempty"`
+	Identifier               string               `json:"identifier,omitempty"`
+	AppName                  string               `json:"appName,omitempty"`
+	AmbassadorId             string               `json:"ambassadorId,omitempty"`
+	Resources                map[string]Resources `json:"resources,omitempty"`
+	Username                 string               `json:"username,omitempty"`
+	Namespace                string               `json:"namespace,omitempty"`
+	Serviceaccount           string               `json:"serviceaccount,omitempty"`
+	RunAsUser                int                  `json:"runAsUser,omitempty"`
+	RunAsGroup               int                  `json:"runAsGroup,omitempty"`
+	FsGroup                  int                  `json:"fsGroup,omitempty"`
+	SupplementalGroups       []int                `json:"supplementalGroups,omitempty"`
+	Privileged               bool                 `json:"privileged,omitempty"`
+	AllowPrivilegeEscalation bool                 `json:"allowPrivilegeEscalation,omitempty"`
+}
+
+// ServicePort represents a single port for a service in a HeLxApp
+type Resources struct {
+	Requests map[string]string `json:"request,omitempty"`
+	Limits   map[string]string `json:"limit,omitempty"`
 }
 
 // HelxInstanceStatus defines the observed state of HelxInstance

@@ -25,18 +25,26 @@ import (
 
 // HelxAppSpec defines the desired state of HelxApp
 type HelxAppSpec struct {
-	ClassName string    `json:"className"`
-	Services  []Service `json:"services"`
+	Name       string    `json:"name,omitempty"`
+	SourceText string    `json:"sourceText,omitempty"`
+	Services   []Service `json:"services"`
 }
 
 // Service represents a single service in a HeLxApp
 type Service struct {
-	Name        string            `json:"name"`
-	Image       string            `json:"image"`
-	Ports       []ServicePort     `json:"ports,omitempty"`
-	Environment map[string]string `json:"environment,omitempty"`
-	Volumes     map[string]string `json:"volumes,omitempty"`
-	Replicas    int32             `json:"replicas,omitempty"`
+	Name        string             `json:"name"`
+	Image       string             `json:"image"`
+	Ports       []ServicePort      `json:"ports,omitempty"`
+	Environment map[string]string  `json:"environment,omitempty"`
+	RBounds     []ResourceBoundary `json:"rlimits,omitempty"`
+	Volumes     map[string]string  `json:"volumes,omitempty"`
+}
+
+// ServicePort represents a single port for a service in a HeLxApp
+type ResourceBoundary struct {
+	Name string `json:"name,omitempty"`
+	Min  string `json:"min,omitempty"`
+	Max  string `json:"max,omitempty"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp
