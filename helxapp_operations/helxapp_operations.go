@@ -275,24 +275,55 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 
 			simpleInfoLogger(fmt.Sprintf("applying template to %v+", system))
 			clearStorage()
+
 			if deploymentYAML, err := template_io.RenderGoTemplate(xformer, "deployment", vars); err != nil {
 				simpleErrorLogger(err, "RenderGoTemplate failed")
 				return nil, err
 			} else {
+				current := deploymentYAML
+				previous := deploymentYAML
+
+				for {
+					if current, err = template_io.ReRender(previous, vars); err != nil {
+						simpleErrorLogger(err, "Deployment ReRender failed")
+						return nil, err
+					}
+					if current == previous {
+						break
+					}
+					previous = current
+				}
+
 				artifacts := RenderArtifacts{}
-				artifacts.DeploymentString = deploymentYAML
+				artifacts.DeploymentString = current
+
 				for _, volume := range system.Volumes {
 					if volume.Scheme == "pvc" {
 						vars := make(map[string]interface{})
 						vars["volume"] = volume
+						vars["system"] = system
 						if pvcYAML, err := template_io.RenderGoTemplate(xformer, "pvc", vars); err != nil {
 							simpleErrorLogger(err, "RenderGoTemplate failed")
 							return nil, err
 						} else {
+							current = pvcYAML
+							previous = pvcYAML
+
+							for {
+								if current, err = template_io.ReRender(previous, vars); err != nil {
+									simpleErrorLogger(err, "PVC ReRender failed")
+									return nil, err
+								}
+								if current == previous {
+									break
+								}
+								previous = current
+							}
+
 							if artifacts.PVCStrings == nil {
 								artifacts.PVCStrings = make(map[string]string)
 							}
-							artifacts.PVCStrings[volume.Attr["claim"]] = pvcYAML
+							artifacts.PVCStrings[volume.Attr["claim"]] = current
 						}
 					}
 				}

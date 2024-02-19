@@ -170,6 +170,18 @@ func RenderGoTemplate(tmpl *template.Template, templateName string, context map[
 	return output.String(), nil
 }
 
+func ReRender(text string, context map[string]interface{}) (string, error) {
+	if tmpl, err := template.New("dynamic").Parse(text); err != nil {
+		return "", err
+	} else {
+		buf := new(bytes.Buffer)
+		if err := tmpl.Execute(buf, context); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
+}
+
 type InMemoryLoader struct {
 	templates map[string]*template.Template
 }
