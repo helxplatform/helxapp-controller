@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: rolebinding
+    app.kubernetes.io/instance: helxapp-service-manager-rolebinding
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: builder
+    app.kubernetes.io/part-of: builder
+    app.kubernetes.io/managed-by: kustomize
+  name: helxapp-service-manager-rolebinding
+  namespace: jeffw
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: helxapp-service-manager-role
+subjects:
+- kind: ServiceAccount
+  name: helxapp-controller-manager
+  namespace: jeffw

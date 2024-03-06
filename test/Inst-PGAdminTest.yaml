@@ -1,15 +1,15 @@
 apiVersion: helx.renci.org/v1
-kind: HelxInstance
+kind: HelxInst
 metadata:
-  name: jupyterlab1
+  name: pgadmin4-test
 spec:
-  appName: "jupyterlab1"
+  appName: "pgadmin4-test"
   username: "jeffw"
   resources:
-    jupyterlab:
+    pgadmin4:
       request:
         cpu: "2"
-        memory: "1G"
+        memory: "5G"
       limit:
         cpu: "2"
-        memory: "1.1G"
+        memory: "5G"

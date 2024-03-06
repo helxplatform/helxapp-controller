@@ -14,48 +14,42 @@ import (
 )
 
 type System struct {
-	Name            string
-	AMB             bool
-	SystemEnv       []EnvVar
-	Username        string
+	AppClassName    string
 	AppName         string
+	InstanceName    string
+	Environment     map[string]string
+	GUID            string
 	Host            string
-	Identifier      string
-	CreateHomeDirs  bool
-	DevPhase        string
-	SecurityContext SecurityContext
+	SecurityContext *SecurityContext
 	Containers      []Container
 	InitContainers  []Container
 	Volumes         map[string]Volume
+	Username        string
 }
 
 type SecurityContext struct {
-	RunAsUser  int
-	RunAsGroup int
-	FsGroup    int
+	RunAsUser  string
+	RunAsGroup string
+	FsGroup    string
 }
 
 type Container struct {
 	Name            string
 	Image           string
 	Command         []string
-	Env             []EnvVar
-	Ports           []Port
-	Expose          []Port
+	Environment     map[string]string
+	HasService      bool
+	Ports           []PortMap
 	Resources       Resources
 	VolumeMounts    []*VolumeMount
-	SecurityContext SecurityContext
+	SecurityContext *SecurityContext
 	LivenessProbe   *Probe
 	ReadinessProbe  *Probe
 }
 
-type EnvVar struct {
-	Name  string
-	Value string
-}
-
-type Port struct {
+type PortMap struct {
 	ContainerPort int
+	Port          int
 	Protocol      string
 }
 

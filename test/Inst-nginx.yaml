@@ -1,5 +1,5 @@
 apiVersion: helx.renci.org/v1
-kind: HelxInstance
+kind: HelxInst
 metadata:
   name: nginx
 spec:

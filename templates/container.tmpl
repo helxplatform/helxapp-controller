@@ -1,109 +1,31 @@
-{{ define "gpuTolerations" }}
-tolerations:
-  - key: "nvidia.com/gpu"
-  operator: "Exists"
-  effect: "NoSchedule"
-{{- end -}}
 
-{{- define "securityContext" }}
-securityContext:
-  {{- if .RunAsUser }}
-  runAsUser: {{ .RunAsUser }}
-  {{- end -}}
-  {{- if .RunAsGroup }}
-  runAsGroup: {{ .RunAsGroup }}
-  {{- end -}}
-  {{- if .FsGroup }}
-  fsGroup: {{ .FsGroup }}
-  {{- end}}
-{{- end -}}
-
-{{/* Init Container Block */}}
-{{define "initContainer"}}
-initContainers:
-- name: volume-tasks
-  image: busybox:1.28
-  {{ if or .System.InitSecurityContext.RunAsUser .System.InitSecurityContext.RunAsGroup }}
-  securityContext:
-    {{ if .System.InitSecurityContext.RunAsUser }}
-    runAsUser: {{ .System.InitSecurityContext.RunAsUser }}
-    {{ end }}
-    {{ if .System.InitSecurityContext.RunAsGroup }}
-    runAsGroup: {{ .System.InitSecurityContext.RunAsGroup }}
-    {{ end }}
-  {{ end }}
-  # Fixed resources
-  resources:
-    requests:
-      memory: {{ .System.InitMemory }}
-      cpu: {{ .System.InitCpus }}
-    limits:
-      memory: {{ .System.InitMemory }}
-      cpu: {{ .System.InitCpus }}
-  command: [ 'sh', '-c' ]
-  args:
-    - mkdir -p {{ .System.ParentDir }}/{{ .System.SubpathDir }} &&
-      mkdir -p {{ .System.ParentDir }}/{{ .System.SharedDir }} &&
-      {{ if eq .System.GiteaIntegration true }}
-      mkdir -p {{ .System.ParentDir }}/{{ .System.SubpathDir }}/.ssh &&
-      echo -e "Host {{ .System.GiteaHost }}\n     Hostname {{ .System.GiteaServiceName }}\n     User {{ .System.GiteaUser }}\n     IdentityFile ~/.ssh/id_gitea" > {{ .System.ParentDir }}/{{ .System.SubpathDir }}/.ssh/config &&
-      {{ end }}
-      ls -aln {{ .System.ParentDir }} &&
-      echo OK
-  volumeMounts:
-  - name: {{ .System.StdnfsPvc }}
-    mountPath: {{ .System.ParentDir }}
-{{end}}
-
-{{/* Container Security Context Block */}}
-{{define "containerSecurityContext"}}
-securityContext:
-  {{if .System.SecurityContext.RunAsUser}}
-  runAsUser: {{.System.SecurityContext.RunAsUser}}
-  {{end}}
-  {{if .System.SecurityContext.RunAsGroup}}
-  runAsGroup: {{.System.SecurityContext.RunAsGroup}}
-  {{end}}
-{{ end }}
 
 {{- define "containerEnv" }}
+{{- if or (ne (len .container.Environment) 0) (ne (len .system.Environment) 0) }}
 env:
-{{- if ne (len .container.Env) 0 }}
-{{- range $env := .container.Env }}
-- name: {{ $env.Name }}
-  value: {{ $env.Value }}
-{{- end -}}
+{{- range $name,$value := .system.Environment }}
+- name: {{ $name }}
+  value: "{{ $value }}"
 {{- end }}
-- name: HOST
-  value: {{ .system.Host }}
-- name: GUID
-  value: {{ .system.Identifier }}
-- name: USER_NAME
-  value: {{ .system.Username }}
-- name: USER
-  value: {{ .system.Username }}
-{{- if .system.AMB -}}
-- name: NB_PREFIX
-  value: /private/{{.system.SystemName}}/{{.system.Username}}/{{.system.Identifier}}
-- name: FB_BASEURL
-  value: /private/{{.system.SystemName}}/{{.system.Username}}/{{.system.Identifier}}
-{{- else }}
-- name: NB_PREFIX
-  value: /
-- name: FB_BASEURL
-  value: /
-{{- end -}}
-{{- end -}}
+{{- range $name,$value := .container.Environment }}
+- name: {{ $name }}
+  value: "{{ $value }}"
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{- define "containerPorts" }}
+{{- if gt (len .Ports) 0 }}
 ports:
-{{- if gt (len .container.Expose) 0 }}
-{{- range $port := .container.Expose }}
-  - containerPort: {{ $port.ContainerPort }}
-    protocol: TCP
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- range $pmap := .Ports }}
+  - containerPort: {{ $pmap.ContainerPort }}
+    {{- if $pmap.Port }}
+    port: {{ $pmap.Port }}
+    {{- end }}
+    protocol: {{ $pmap.Protocol }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{- define "containerResources" }}
 {{- if or .Resources.Limits .Resources.Requests }}
@@ -206,5 +128,29 @@ volumeMounts:
     {{ if .Container.ReadinessProbe.FailureThreshold }}
     failureThreshold: {{ .Container.ReadinessProbe.FailureThreshold }}
     {{ end }}
+{{- end }}
+{{- end }}
+
+{{- define "containerSpec" }}
+{{- with $context := . }}
+{{- with $container := $context.container }}
+- name: {{ $container.Name }}
+  {{- if $container.SecurityContext }}
+  {{- templateToString "securityContext" $container.SecurityContext | indent 2 }}
+  {{- end }}
+  {{- if $container.Command }}
+  command:
+    {{- range $_,$arg := $container.Command }}
+    - {{ $arg }}
+    {{- end }}
+  {{- end }}
+  {{- templateToString "containerEnv" $context | indent 2 }}
+  image: {{ $container.Image }}
+  {{- templateToString "containerPorts" $container | indent 2 }}
+  {{- templateToString "containerResources" $container | indent 2 }}
+  {{- templateToString "containerLivenessProbe" $context | indent 2 }}
+  {{- templateToString "containerReadinessProbe" $context | indent 2 }}
+  {{- templateToString "containerVolumeMounts" $container | indent 2 }}
+{{- end }}
 {{- end }}
 {{- end }}

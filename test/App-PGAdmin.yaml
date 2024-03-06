@@ -1,15 +1,15 @@
 apiVersion: helx.renci.org/v1
 kind: HelxApp
 metadata:
-  name: jupyterlab1
+  name: pgadmin4
   namespace: jeffw
 spec:
-  appClassName: JupyterLab
+  appClassName: PGAdmin4
   services:
-    - name: jupyterlab
-      image: containers.renci.org/helxplatform/jupyter-lab:latest
+    - name: pgadmin4
+      image: containers.renci.org/helxplatform/pgadmin4:v0.0.6
       ports:
-      - containerPort: 8888
-        port: 8888
+      - containerPort: 8080
+        port: 8080
       volumes:
         home: "{{ .system.Username }}-home:/home/{{ .system.Username }},rwx,retain"

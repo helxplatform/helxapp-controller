@@ -5,14 +5,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: helxinstances.helx.renci.org
+  name: helxinsts.helx.renci.org
 spec:
   group: helx.renci.org
   names:
-    kind: HelxInstance
-    listKind: HelxInstanceList
-    plural: helxinstances
-    singular: helxinstance
+    kind: HelxInst
+    listKind: HelxInstList
+    plural: helxinsts
+    singular: helxinst
   scope: Namespaced
   versions:
   - name: v1

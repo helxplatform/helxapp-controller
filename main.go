@@ -109,7 +109,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "HelxApp")
 		os.Exit(1)
 	}
-	if err = (&controllers.HelxInstanceReconciler{
+	if err = (&controllers.HelxInstReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

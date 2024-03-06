@@ -3,21 +3,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    helxapp-guid: {{ .system.Identifier }}
+    guid: {{ .system.GUID }}
+    app-name: {{ .system.AppName }}
     username: {{ .system.Username }}
-  name: {{ .system.Name }}
+  name: {{ .system.AppName }}-{{ .system.GUID }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      helxapp-guid: {{ .system.Identifier }}
-      username: {{ .system.Username }}
-      name: {{ .system.Name }}
       app-name: {{ .system.AppName }}
-      original-app-name: {{ .system.AppName }}
-      reaper-label: {{ .system.AppName }}
-      helxapp-guid: {{ .system.Identifier }}
-      helxapp-app-id: {{ .system.AppName }}
+      guid: {{ .system.GUID }}
   strategy:
     rollingUpdate:
       maxSurge: 25%

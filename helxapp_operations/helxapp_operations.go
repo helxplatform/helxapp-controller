@@ -21,9 +21,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type RenderArtifacts struct {
-	DeploymentString string
-	PVCStrings       map[string]string
+type RenderArtifact struct {
+	Render string
+	Attr   map[string]string
+}
+
+type Artifacts struct {
+	Deployment RenderArtifact
+	PVCs       map[string]RenderArtifact
+	Services   map[string]RenderArtifact
 }
 
 var apps = make(map[string]helxv1.HelxApp)
@@ -147,7 +153,6 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 	options := matches[6]
 
 	// Parsing options into a map
-	optionMap := make(map[string]string)
 	if options != "" {
 		optionPairs := regexp.MustCompile(`([^:#,=]+)(?:=([^:#,=]+))?`)
 		for _, pair := range optionPairs.FindAllStringSubmatch(options, -1) {
@@ -156,7 +161,7 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 			if len(pair) > 2 && pair[2] != "" {
 				value = pair[2]
 			}
-			optionMap[key] = value
+			attr[key] = value
 		}
 	}
 
@@ -177,7 +182,7 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 
 	readOnly := false
 
-	if ro, found := optionMap["ro"]; found && ro == "true" {
+	if ro, found := attr["ro"]; found && ro == "true" {
 		readOnly = true
 	}
 
@@ -214,35 +219,44 @@ func parseServiceVolume(service helxv1.Service, sourceMap map[string]*template_i
 	return details, nil
 }
 
-func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifacts, error) {
+func CreateDeploymentArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 	uuid := uuid.New()
-	id := uuid.String()
+	guid := uuid.String()
 	containers := []template_io.Container{}
 	sourceMap := make(map[string]*template_io.Volume)
 
-	if app, found := GetAppFromMap(apps, instance.AppName); found {
+	if app, found := GetAppFromMap(apps, instance.Spec.AppName); found {
 		for i := 0; i < len(app.Spec.Services); i++ {
-			ports := []template_io.Port{}
+			ports := []template_io.PortMap{}
+			hasService := false
 			name := app.Spec.Services[i].Name
 
-			for j := 0; j < len(app.Spec.Services[i].Ports); j++ {
-				srcPort := app.Spec.Services[i].Ports[j]
-				ports = append(ports, template_io.Port{ContainerPort: int(srcPort.ContainerPort), Protocol: "TCP"})
+			for _, srcMap := range app.Spec.Services[i].Ports {
+				dstMap := template_io.PortMap{
+					ContainerPort: int(srcMap.ContainerPort),
+					Protocol:      "TCP",
+					Port:          int(srcMap.Port),
+				}
+				ports = append(ports, dstMap)
+				if dstMap.Port != 0 {
+					hasService = true
+				}
 			}
 
 			if volumeList, err := parseServiceVolume(app.Spec.Services[i], sourceMap); err == nil {
 				resources := template_io.Resources{}
 
-				if resource, found := instance.Resources[name]; found {
+				if resource, found := instance.Spec.Resources[name]; found {
 					resources.Limits = resource.Limits
 					resources.Requests = resource.Requests
 				}
 
 				c := template_io.Container{
 					Name:         name,
+					Command:      app.Spec.Services[i].Command[:],
+					HasService:   hasService,
 					Image:        app.Spec.Services[i].Image,
 					Ports:        ports,
-					Expose:       ports,
 					Resources:    resources,
 					VolumeMounts: volumeList,
 				}
@@ -258,16 +272,24 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 				volumes[name] = *value
 			}
 
+			systemEnv := make(map[string]string)
+			systemEnv["GUID"] = guid
+			systemEnv["USER"] = instance.Spec.Username
+			systemEnv["HOST"] = ""
+			systemEnv["APP_CLASS_NAME"] = app.Spec.AppClassName
+			systemEnv["APP_NAME"] = app.Name
+			systemEnv["INSTANCE_NAME"] = instance.Name
+
 			system := template_io.System{
-				Name:           instance.AppName,
-				Username:       "jeffw",
-				AppName:        instance.AppName,
-				Host:           "",
-				Identifier:     instance.AppName + "-" + id,
-				CreateHomeDirs: false,
-				DevPhase:       "test",
-				Containers:     containers,
-				Volumes:        volumes,
+				AppClassName: app.Spec.AppClassName,
+				AppName:      app.Name,
+				InstanceName: instance.Name,
+				Containers:   containers,
+				Environment:  systemEnv,
+				Host:         "",
+				GUID:         guid,
+				Username:     instance.Spec.Username,
+				Volumes:      volumes,
 			}
 
 			vars := make(map[string]interface{})
@@ -294,8 +316,8 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 					previous = current
 				}
 
-				artifacts := RenderArtifacts{}
-				artifacts.DeploymentString = current
+				artifacts := Artifacts{}
+				artifacts.Deployment = RenderArtifact{Render: current, Attr: make(map[string]string)}
 
 				for _, volume := range system.Volumes {
 					if volume.Scheme == "pvc" {
@@ -320,13 +342,46 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 								previous = current
 							}
 
-							if artifacts.PVCStrings == nil {
-								artifacts.PVCStrings = make(map[string]string)
+							if artifacts.PVCs == nil {
+								artifacts.PVCs = make(map[string]RenderArtifact)
 							}
-							artifacts.PVCStrings[volume.Attr["claim"]] = current
+							artifacts.PVCs[volume.Attr["claim"]] = RenderArtifact{Render: current, Attr: make(map[string]string)}
+							if retain, found := volume.Attr["retain"]; found {
+								artifacts.PVCs[volume.Attr["claim"]].Attr["retain"] = retain
+							}
 						}
 					}
 				}
+
+				for _, container := range system.Containers {
+					vars := make(map[string]interface{})
+					vars["container"] = container
+					vars["system"] = system
+					if serviceYAML, err := template_io.RenderGoTemplate(xformer, "service", vars); err != nil {
+						simpleErrorLogger(err, "RenderGoTemplate failed")
+						return nil, err
+					} else {
+						current = serviceYAML
+						previous = serviceYAML
+
+						for {
+							if current, err = template_io.ReRender(previous, vars); err != nil {
+								simpleErrorLogger(err, "PVC ReRender failed")
+								return nil, err
+							}
+							if current == previous {
+								break
+							}
+							previous = current
+						}
+
+						if artifacts.Services == nil {
+							artifacts.Services = make(map[string]RenderArtifact)
+						}
+						artifacts.Services[container.Name] = RenderArtifact{Render: current, Attr: make(map[string]string)}
+					}
+				}
+
 				return &artifacts, nil
 			}
 		}
@@ -334,9 +389,9 @@ func CreateDeploymentArtifacts(instance *helxv1.HelxInstanceSpec) (*RenderArtifa
 	return nil, nil
 }
 
-func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInstance, deploymentYAML string) error {
+func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInst, artifact RenderArtifact) error {
 	// Convert YAML string to a Deployment object
-	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(deploymentYAML), 100)
+	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(artifact.Render), 100)
 	var deployment appsv1.Deployment
 	if err := decode.Decode(&deployment); err != nil {
 		return err
@@ -363,9 +418,9 @@ func CreateDeploymentFromYAML(ctx context.Context, c client.Client, scheme *runt
 	return nil
 }
 
-func CreatePVCFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInstance, pvcYAML string) error {
+func CreatePVCFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInst, artifact RenderArtifact) error {
 	// Convert YAML string to a PVC object
-	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(pvcYAML), 100)
+	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(artifact.Render), 100)
 	var pvc corev1.PersistentVolumeClaim
 	if err := decode.Decode(&pvc); err != nil {
 		return err
@@ -379,9 +434,11 @@ func CreatePVCFromYAML(ctx context.Context, c client.Client, scheme *runtime.Sch
 		pvc.Name = req.NamespacedName.Name
 	}
 
-	// Set the controller reference so that the PVC will be deleted when the HelxApp is deleted
-	if err := ctrl.SetControllerReference(instance, &pvc, scheme); err != nil {
-		return err
+	if retain, found := artifact.Attr["retain"]; !found || retain == "false" {
+		// Set the controller reference so that the PVC will be deleted when the HelxApp is deleted
+		if err := ctrl.SetControllerReference(instance, &pvc, scheme); err != nil {
+			return err
+		}
 	}
 
 	// Check if the PVC already exists
@@ -399,6 +456,35 @@ func CreatePVCFromYAML(ctx context.Context, c client.Client, scheme *runtime.Sch
 		}
 	} else if err != nil {
 		// An error occurred that isn't related to the non-existence of the PVC
+		return err
+	}
+
+	return nil
+}
+
+func CreateServiceFromYAML(ctx context.Context, c client.Client, scheme *runtime.Scheme, req ctrl.Request, instance *helxv1.HelxInst, artifact RenderArtifact) error {
+	// Convert YAML string to a Service object
+	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(artifact.Render), 100)
+	var service corev1.Service
+	if err := decode.Decode(&service); err != nil {
+		return err
+	}
+
+	// Set the Namespace and Name for the Service if it's not set
+	if service.Namespace == "" {
+		service.Namespace = req.NamespacedName.Namespace
+	}
+	if service.Name == "" {
+		service.Name = req.NamespacedName.Name
+	}
+
+	// Set the controller reference so that the Service will be deleted when the HelxApp is deleted
+	if err := ctrl.SetControllerReference(instance, &service, scheme); err != nil {
+		return err
+	}
+
+	// Create the Service
+	if err := c.Create(ctx, &service); err != nil {
 		return err
 	}
 

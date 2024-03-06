@@ -24,20 +24,15 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // HelxInstanceSpec defines the desired state of HelxInstance
-type HelxInstanceSpec struct {
-	Identifier               string               `json:"identifier,omitempty"`
-	AppName                  string               `json:"appName,omitempty"`
-	AmbassadorId             string               `json:"ambassadorId,omitempty"`
-	Resources                map[string]Resources `json:"resources,omitempty"`
-	Username                 string               `json:"username,omitempty"`
-	Namespace                string               `json:"namespace,omitempty"`
-	Serviceaccount           string               `json:"serviceaccount,omitempty"`
-	RunAsUser                int                  `json:"runAsUser,omitempty"`
-	RunAsGroup               int                  `json:"runAsGroup,omitempty"`
-	FsGroup                  int                  `json:"fsGroup,omitempty"`
-	SupplementalGroups       []int                `json:"supplementalGroups,omitempty"`
-	Privileged               bool                 `json:"privileged,omitempty"`
-	AllowPrivilegeEscalation bool                 `json:"allowPrivilegeEscalation,omitempty"`
+type HelxInstSpec struct {
+	Identifier         string               `json:"identifier,omitempty"`
+	AppName            string               `json:"appName"`
+	Resources          map[string]Resources `json:"resources,omitempty"`
+	Username           string               `json:"username,omitempty"`
+	RunAsUser          int                  `json:"runAsUser,omitempty"`
+	RunAsGroup         int                  `json:"runAsGroup,omitempty"`
+	FsGroup            int                  `json:"fsGroup,omitempty"`
+	SupplementalGroups []int                `json:"supplementalGroups,omitempty"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp
@@ -47,7 +42,7 @@ type Resources struct {
 }
 
 // HelxInstanceStatus defines the observed state of HelxInstance
-type HelxInstanceStatus struct {
+type HelxInstStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -55,23 +50,23 @@ type HelxInstanceStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // HelxInstance is the Schema for the helxinstances API
-type HelxInstance struct {
+type HelxInst struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HelxInstanceSpec   `json:"spec,omitempty"`
-	Status HelxInstanceStatus `json:"status,omitempty"`
+	Spec   HelxInstSpec   `json:"spec,omitempty"`
+	Status HelxInstStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
 // HelxInstanceList contains a list of HelxInstance
-type HelxInstanceList struct {
+type HelxInstList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HelxInstance `json:"items"`
+	Items           []HelxInst `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&HelxInstance{}, &HelxInstanceList{})
+	SchemeBuilder.Register(&HelxInst{}, &HelxInstList{})
 }

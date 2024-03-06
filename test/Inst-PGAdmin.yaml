@@ -1,0 +1,15 @@
+apiVersion: helx.renci.org/v1
+kind: HelxInst
+metadata:
+  name: pgadmin4
+spec:
+  appName: "pgadmin4"
+  username: "jeffw"
+  resources:
+    pgadmin4:
+      request:
+        cpu: "2"
+        memory: "5G"
+      limit:
+        cpu: "2"
+        memory: "5G"

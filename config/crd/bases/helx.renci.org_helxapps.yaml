@@ -35,18 +35,24 @@ spec:
           spec:
             description: HelxAppSpec defines the desired state of HelxApp
             properties:
-              name:
+              appClassName:
                 type: string
               services:
                 items:
                   description: Service represents a single service in a HeLxApp
                   properties:
+                    command:
+                      items:
+                        type: string
+                      type: array
                     environment:
                       additionalProperties:
                         type: string
                       type: object
                     image:
                       type: string
+                    init:
+                      type: boolean
                     name:
                       type: string
                     ports:
@@ -57,15 +63,15 @@ spec:
                           containerPort:
                             format: int32
                             type: integer
-                          hostPort:
+                          port:
                             format: int32
                             type: integer
                         required:
                         - containerPort
                         type: object
                       type: array
-                    rlimits:
-                      items:
+                    resourceBounds:
+                      additionalProperties:
                         description: ServicePort represents a single port for a service
                           in a HeLxApp
                         properties:
@@ -73,10 +79,8 @@ spec:
                             type: string
                           min:
                             type: string
-                          name:
-                            type: string
                         type: object
-                      type: array
+                      type: object
                     volumes:
                       additionalProperties:
                         type: string

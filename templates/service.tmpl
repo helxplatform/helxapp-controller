@@ -1,0 +1,18 @@
+{{- define "service" }}
+{{- if .container.HasService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .system.AppName }}-{{ .system.GUID }}
+spec:
+  type: ClusterIP
+  selector:
+    name: {{ .system.AppName }}-{{ .system.GUID }}
+  ports:
+  {{- range $_,$pmap := .container.Ports }}
+    - protocol: {{ $pmap.Protocol }}
+      port: {{ $pmap.Port }}
+      targetPort: {{ $pmap.ContainerPort }}
+  {{- end }}
+{{- end }}
+{{- end }}

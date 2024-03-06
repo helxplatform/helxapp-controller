@@ -35,7 +35,7 @@ rules:
 - apiGroups:
   - helx.renci.org
   resources:
-  - helxinstances
+  - helxinsts
   verbs:
   - create
   - delete
@@ -47,13 +47,13 @@ rules:
 - apiGroups:
   - helx.renci.org
   resources:
-  - helxinstances/finalizers
+  - helxinsts/finalizers
   verbs:
   - update
 - apiGroups:
   - helx.renci.org
   resources:
-  - helxinstances/status
+  - helxinsts/status
   verbs:
   - get
   - patch

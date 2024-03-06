@@ -31,14 +31,14 @@ import (
 )
 
 // HelxInstanceReconciler reconciles a HelxInstance object
-type HelxInstanceReconciler struct {
+type HelxInstReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinstances/finalizers,verbs=update
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinsts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinsts/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinsts/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -49,12 +49,12 @@ type HelxInstanceReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
-func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// Fetch the HelxInstance custom resource
-	helxInstance := &helxv1.HelxInstance{}
-	if err := r.Get(ctx, req.NamespacedName, helxInstance); err != nil {
+	helxInst := &helxv1.HelxInst{}
+	if err := r.Get(ctx, req.NamespacedName, helxInst); err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
 			logger.Info("HelxInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
@@ -65,21 +65,30 @@ func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// Log the event and custom resource content
-	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInstance))
+	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInst))
 	if err := helxapp_operations.CheckInit(ctx); err == nil {
-		if artifacts, err := helxapp_operations.CreateDeploymentArtifacts(&helxInstance.Spec); err == nil {
-			if artifacts != nil && artifacts.DeploymentString != "" {
+		if artifacts, err := helxapp_operations.CreateDeploymentArtifacts(helxInst); err == nil {
+			if artifacts != nil && artifacts.Deployment.Render != "" {
 				logger.Info("generated Deployment YAML:")
-				logger.Info(artifacts.DeploymentString)
-				if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, artifacts.DeploymentString); err != nil {
+				logger.Info(artifacts.Deployment.Render)
+				if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInst, artifacts.Deployment); err != nil {
 					logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
 				} else {
-					for name, PVCString := range artifacts.PVCStrings {
-						if PVCString != "" {
+					for name, PVC := range artifacts.PVCs {
+						if PVC.Render != "" {
 							logger.Info("generated PVC YAML:")
-							logger.Info(PVCString)
-							if err = helxapp_operations.CreatePVCFromYAML(ctx, r.Client, r.Scheme, req, helxInstance, PVCString); err != nil {
+							logger.Info(PVC.Render)
+							if err = helxapp_operations.CreatePVCFromYAML(ctx, r.Client, r.Scheme, req, helxInst, PVC); err != nil {
 								logger.Error(err, "unable to create pvc", "PVCName", name, "NamespacedName", req.NamespacedName)
+							}
+						}
+					}
+					for name, service := range artifacts.Services {
+						if service.Render != "" {
+							logger.Info("generated PVC YAML:")
+							logger.Info(service.Render)
+							if err = helxapp_operations.CreateServiceFromYAML(ctx, r.Client, r.Scheme, req, helxInst, service); err != nil {
+								logger.Error(err, "unable to create service", "Service Name", name, "NamespacedName", req.NamespacedName)
 							}
 						}
 					}
@@ -91,8 +100,8 @@ func (r *HelxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HelxInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HelxInstReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&helxv1.HelxInstance{}).
+		For(&helxv1.HelxInst{}).
 		Complete(r)
 }

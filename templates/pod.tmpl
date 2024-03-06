@@ -1,48 +1,54 @@
 {{- define "podMetadata" }}
 metadata:
-  name: {{ .system.Name }}
+  name: {{ .system.AppName }}-{{ .system.GUID }}
   labels:
-    name: {{ .system.Name }}
-    username: {{ .system.Username }}
+    name: {{ .system.AppName }}-{{ .system.GUID }}
     app-name: {{ .system.AppName }}
-    original-app-name: {{ .system.AppName }}
-    reaper-label: {{ .system.AppName }}
+    username: {{ .system.Username }}
+    guid: {{ .system.GUID }}
+    app-class-name: {{ .system.AppClassName }}
+    instance-name: {{ .system.InstanceName }}
     executor: helxapp-controller
-    helxapp-guid: {{ .system.Identifier }}
-    helxapp-app-id: {{ .system.AppName }}
 {{- end -}}
 
 {{- define "containerList" }}
 {{- with $dot := . }}
 {{- range $index,$container := .system.Containers }}
 {{- with $context := dict "system" $dot.system "container" $container }}
-- name: {{ $container.Name }}
-  {{- if or $container.SecurityContext.RunAsUser $container.SecurityContext.RunAsGroup $container.SecurityContext.FsGroup }}
-  {{- template "securityContext" $container.SecurityContext }}
-  {{- end }}
-  {{- if $container.Command }}
-  command: {{ $container.Command }}
-  {{- end }}
-  {{- templateToString "containerEnv" $context | indent 2 }}
-  image: {{ $container.Image }}
-  {{- templateToString "containerPorts" $context | indent 2 }}
-  {{- templateToString "containerResources" $container | indent 2 }}
-  {{- templateToString "containerLivenessProbe" $context | indent 2 }}
-  {{- templateToString "containerReadinessProbe" $context | indent 2 }}
-  {{- templateToString "containerVolumeMounts" $container | indent 2 }}
+{{- templateToString "containerSpec" $context }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 
+{{- define "initContainerList" }}
+{{- with $dot := . }}
+{{- range $index,$container := .system.InitContainers }}
+{{- with $context := dict "system" $dot.system "container" $container }}
+{{- templateToString "containerSpec" $context }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "securityContext" }}
+securityContext:
+  {{- if .RunAsUser }}
+  runAsUser: {{ .RunAsUser }}
+  {{- end -}}
+  {{- if .RunAsGroup }}
+  runAsGroup: {{ .RunAsGroup }}
+  {{- end -}}
+  {{- if .FsGroup }}
+  fsGroup: {{ .FsGroup }}
+  {{- end }}
+{{- end }}
+
 {{- define "podProps" }}
-  {{- if or .system.SecurityContext.RunAsUser .system.SecurityContext.RunAsGroup .system.SecurityContext.FsGroup -}}
-  {{- template "securityContext" .system.SecurityContext }}
-  {{- end -}}
-  {{- if and (ge (len .system.InitContainers) 0) .system.CreateHomeDirs -}}
-  {{- template "initContainer" . }}
-  {{- end -}}
-{{- end -}}
+{{- if .system.SecurityContext }}
+{{- templateToString "securityContext" .system.SecurityContext | indent 2 }}
+{{- end }}
+{{- end }}
 
 {{- define "podVolumes" }}
 {{- if gt (len .system.Volumes) 0 }}
@@ -64,6 +70,10 @@ volumes:
 {{- define "podSpec" }}
 spec:
   {{- template "podProps" . }}
+  {{- if gt (len .system.InitContainers) 0 }}
+  initContainers:
+  {{- templateToString "initContainerList" . | indent 4 }}
+  {{- end }}
   containers:
   {{- templateToString "containerList" . | indent 4 }}
   {{- templateToString "podVolumes" . | indent 2 }}

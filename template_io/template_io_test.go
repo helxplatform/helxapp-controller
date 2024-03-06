@@ -20,17 +20,16 @@ func TestInitGoTemplate(t *testing.T) {
 
 func TestRenderGoTemplate(t *testing.T) {
 	system := System{
-		Name:           "test-system",
-		Username:       "test-username",
-		AppName:        "test-system-name",
-		Host:           "test-system-host",
-		Identifier:     "test-identifier",
-		CreateHomeDirs: true,
-		DevPhase:       "test",
-		SecurityContext: SecurityContext{
-			RunAsUser:  1000,
-			RunAsGroup: 1000,
-			FsGroup:    1000,
+		AppName:      "test-app",
+		AppClassName: "test-system",
+		InstanceName: "test-instance",
+		Username:     "test-username",
+		Host:         "test-system-host",
+		GUID:         "xxx-xxx-xxx-xxx",
+		SecurityContext: &SecurityContext{
+			RunAsUser:  "1000",
+			RunAsGroup: "1000",
+			FsGroup:    "1000",
 		},
 		Containers: []Container{
 			// similar to previous test case
@@ -51,38 +50,29 @@ func TestRenderGoTemplate(t *testing.T) {
 
 func TestRenderNginx(t *testing.T) {
 	system := System{
-		Name:           "nginx",
-		Username:       "jeffw",
-		AppName:        "nginx",
-		Host:           "host1",
-		Identifier:     "nginx-1",
-		CreateHomeDirs: false,
-		DevPhase:       "test",
-		SecurityContext: SecurityContext{
-			RunAsUser:  0,
-			RunAsGroup: 0,
-			FsGroup:    0,
+		AppClassName: "nginx",
+		AppName:      "nginx",
+		InstanceName: "inst1",
+		Username:     "jeffw",
+		Host:         "host1",
+		GUID:         "xxx-xxx-xxx-xxx",
+		SecurityContext: &SecurityContext{
+			RunAsUser:  "0",
+			RunAsGroup: "0",
+			FsGroup:    "0",
 		},
 		Containers: []Container{
 			{
 				Name:    "nginx-test",
 				Image:   "nginx:latest",
 				Command: []string{},
-				Env: []EnvVar{
-					{
-						Name:  "TEST_ENV_VAR",
-						Value: "test",
-					},
+				Environment: map[string]string{
+					"TEST_ENV_VAR": "test",
 				},
-				Ports: []Port{
+				Ports: []PortMap{
 					{
 						ContainerPort: 80,
-						Protocol:      "TCP",
-					},
-				},
-				Expose: []Port{
-					{
-						ContainerPort: 80,
+						Port:          80,
 						Protocol:      "TCP",
 					},
 				},
