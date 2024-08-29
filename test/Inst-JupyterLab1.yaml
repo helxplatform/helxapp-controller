@@ -4,7 +4,7 @@ metadata:
   name: jupyterlab1
 spec:
   appName: "jupyterlab1"
-  username: "jeffw"
+  userName: "jeffw"
   resources:
     jupyterlab:
       request:

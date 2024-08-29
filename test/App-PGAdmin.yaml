@@ -6,10 +6,10 @@ metadata:
 spec:
   appClassName: PGAdmin4
   services:
-    - name: pgadmin4
+    - name: main
       image: containers.renci.org/helxplatform/pgadmin4:v0.0.6
       ports:
-      - containerPort: 8080
-        port: 8080
+        - containerPort: 8080
+          port: 8080
       volumes:
-        home: "{{ .system.Username }}-home:/home/{{ .system.Username }},rwx,retain"
+        home: "{{ .system.UserName }}-home:/home/{{ .system.UserName }},rwx,retain"

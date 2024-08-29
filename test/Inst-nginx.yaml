@@ -4,4 +4,4 @@ metadata:
   name: nginx
 spec:
   appName: "nginx"
-  username: "jeffw"
+  userName: "jeffw"

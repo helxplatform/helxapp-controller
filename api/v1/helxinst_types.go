@@ -25,14 +25,9 @@ import (
 
 // HelxInstanceSpec defines the desired state of HelxInstance
 type HelxInstSpec struct {
-	Identifier         string               `json:"identifier,omitempty"`
-	AppName            string               `json:"appName"`
-	Resources          map[string]Resources `json:"resources,omitempty"`
-	Username           string               `json:"username,omitempty"`
-	RunAsUser          int                  `json:"runAsUser,omitempty"`
-	RunAsGroup         int                  `json:"runAsGroup,omitempty"`
-	FsGroup            int                  `json:"fsGroup,omitempty"`
-	SupplementalGroups []int                `json:"supplementalGroups,omitempty"`
+	AppName   string               `json:"appName"`
+	Resources map[string]Resources `json:"resources,omitempty"`
+	UserName  string               `json:"userName"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp
@@ -43,8 +38,8 @@ type Resources struct {
 
 // HelxInstanceStatus defines the observed state of HelxInstance
 type HelxInstStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	ObservedGeneration int64  `json:"observedGeneration"`
+	UUID               string `json:"uuid,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,6 +29,7 @@ import (
 
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
 	"github.com/helxplatform/helxapp/helxapp_operations"
+	"github.com/kr/pretty"
 )
 
 // HelxInstanceReconciler reconciles a HelxInstance object
@@ -51,52 +53,45 @@ type HelxInstReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	instName := req.NamespacedName.String()
 
 	// Fetch the HelxInstance custom resource
 	helxInst := &helxv1.HelxInst{}
 	if err := r.Get(ctx, req.NamespacedName, helxInst); err != nil {
 		if errors.IsNotFound(err) {
 			// Resource is already deleted, return without error
-			logger.Info("HelxInstance deleted, nothing to reconcile", "NamespacedName", req.NamespacedName)
+			logger.Info("HelxInstance deleted", "NamespacedName", req.NamespacedName)
+			helxapp_operations.DeleteInst(instName)
 			return ctrl.Result{}, nil
 		}
 		logger.Error(err, "unable to fetch HelxInstance", "NamespacedName", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Log the event and custom resource content
-	logger.Info("Reconciling HelxInstance", "HelxInstance", fmt.Sprintf("%+v", helxInst))
-	if err := helxapp_operations.CheckInit(ctx); err == nil {
-		if artifacts, err := helxapp_operations.CreateDeploymentArtifacts(helxInst); err == nil {
-			if artifacts != nil && artifacts.Deployment.Render != "" {
-				logger.Info("generated Deployment YAML:")
-				logger.Info(artifacts.Deployment.Render)
-				if err = helxapp_operations.CreateDeploymentFromYAML(ctx, r.Client, r.Scheme, req, helxInst, artifacts.Deployment); err != nil {
-					logger.Error(err, "unable to create deployment", "NamespacedName", req.NamespacedName)
-				} else {
-					for name, PVC := range artifacts.PVCs {
-						if PVC.Render != "" {
-							logger.Info("generated PVC YAML:")
-							logger.Info(PVC.Render)
-							if err = helxapp_operations.CreatePVCFromYAML(ctx, r.Client, r.Scheme, req, helxInst, PVC); err != nil {
-								logger.Error(err, "unable to create pvc", "PVCName", name, "NamespacedName", req.NamespacedName)
-							}
-						}
-					}
-					for name, service := range artifacts.Services {
-						if service.Render != "" {
-							logger.Info("generated PVC YAML:")
-							logger.Info(service.Render)
-							if err = helxapp_operations.CreateServiceFromYAML(ctx, r.Client, r.Scheme, req, helxInst, service); err != nil {
-								logger.Error(err, "unable to create service", "Service Name", name, "NamespacedName", req.NamespacedName)
-							}
-						}
-					}
-				}
-			}
-		}
+	// Check if this reconciliation needs to process changes or if it's a resync
+	if helxInst.Status.ObservedGeneration >= helxInst.Generation {
+		// No changes since last observation
+		logger.Info("No updates needed", "NamespacedName", req.NamespacedName)
+		helxapp_operations.AddInst(helxInst)
+		return ctrl.Result{}, nil
 	}
-	return ctrl.Result{}, nil
+
+	if helxInst.Status.UUID == "" {
+		helxInst.Status.UUID = uuid.New().String()
+	}
+	// Update observed generation after processing
+	defer func() {
+		helxInst.Status.ObservedGeneration = helxInst.Generation
+		if err := r.Status().Update(ctx, helxInst); err != nil {
+			logger.Error(err, "Failed to update HelxInstance status", "NamespacedName", req.NamespacedName)
+		}
+	}()
+
+	// Log the event and custom resource content
+	logger.Info("Reconciling HelxInstance")
+	logger.V(1).Info(fmt.Sprintf("%# v\n", pretty.Formatter(helxInst)))
+	helxapp_operations.AddInst(helxInst)
+	return ctrl.Result{}, helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx)
 }
 
 // SetupWithManager sets up the controller with the Manager.

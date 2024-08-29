@@ -7,6 +7,8 @@ spec:
   appClassName: nginx
   services:
     - name: web
+      environment:
+        x: "zzzzz"
       image: nginx:latest
       ports:
         - containerPort: 80

@@ -97,6 +97,12 @@ spec:
             type: object
           status:
             description: HelxAppStatus defines the observed state of HelxApp
+            properties:
+              observedGeneration:
+                format: int64
+                type: integer
+            required:
+            - observedGeneration
             type: object
         type: object
     served: true

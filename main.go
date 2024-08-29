@@ -22,6 +22,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ import (
 
 	helxv1 "github.com/helxplatform/helxapp/api/v1"
 	"github.com/helxplatform/helxapp/controllers"
+	"github.com/helxplatform/helxapp/helxapp_operations"
 	"github.com/helxplatform/helxapp/template_io"
 	//+kubebuilder:scaffold:imports
 )
@@ -64,6 +66,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -71,11 +74,19 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		Level:       zapcore.DebugLevel,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	mainLog := zap.New(zap.UseFlagOptions(&opts))
+
+	ctrl.SetLogger(mainLog)
+
+	if err := helxapp_operations.Initalize(mainLog); err != nil {
+		setupLog.Error(err, "Cannot initialize operations")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Namespace:              "jeffw",
@@ -114,6 +125,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "HelxInstance")
+		os.Exit(1)
+	}
+	if err = (&controllers.HelxUserReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "HelxUser")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

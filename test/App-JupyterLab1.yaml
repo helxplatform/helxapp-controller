@@ -6,10 +6,10 @@ metadata:
 spec:
   appClassName: JupyterLab
   services:
-    - name: jupyterlab
+    - name: main
       image: containers.renci.org/helxplatform/jupyter-lab:latest
       ports:
-      - containerPort: 8888
-        port: 8888
+        - containerPort: 8888
+          port: 8888
       volumes:
-        home: "{{ .system.Username }}-home:/home/{{ .system.Username }},rwx,retain"
+        home: "{{ .system.UserName }}-home:/home/{{ .system.UserName }},rwx,retain"

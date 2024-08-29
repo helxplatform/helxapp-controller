@@ -23,13 +23,13 @@ func TestRenderGoTemplate(t *testing.T) {
 		AppName:      "test-app",
 		AppClassName: "test-system",
 		InstanceName: "test-instance",
-		Username:     "test-username",
+		UserName:     "test-username",
 		Host:         "test-system-host",
-		GUID:         "xxx-xxx-xxx-xxx",
+		UUID:         "xxx-xxx-xxx-xxx",
 		SecurityContext: &SecurityContext{
 			RunAsUser:  "1000",
 			RunAsGroup: "1000",
-			FsGroup:    "1000",
+			FSGroup:    "1000",
 		},
 		Containers: []Container{
 			// similar to previous test case
@@ -53,13 +53,13 @@ func TestRenderNginx(t *testing.T) {
 		AppClassName: "nginx",
 		AppName:      "nginx",
 		InstanceName: "inst1",
-		Username:     "jeffw",
+		UserName:     "jeffw",
 		Host:         "host1",
-		GUID:         "xxx-xxx-xxx-xxx",
+		UUID:         "xxx-xxx-xxx-xxx",
 		SecurityContext: &SecurityContext{
 			RunAsUser:  "0",
 			RunAsGroup: "0",
-			FsGroup:    "0",
+			FSGroup:    "0",
 		},
 		Containers: []Container{
 			{

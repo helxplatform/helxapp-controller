@@ -12,7 +12,7 @@ spec:
         - /bin/sleep
         - infinity
       ports:
-      - containerPort: 8080
-        port: 8080
+        - containerPort: 8080
+          port: 8080
       volumes:
         home: "{{ .system.Username }}-home:/home/{{ .system.Username }},rwx,retain"

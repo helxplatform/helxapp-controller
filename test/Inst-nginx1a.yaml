@@ -3,5 +3,5 @@ kind: HelxInst
 metadata:
   name: nginx1
 spec:
-  appName: "nginx1"
+  appName: "nginx2"
   userName: "jeffw"

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/jackc/pgx/v4"
+	"github.com/kr/pretty"
 )
 
 type System struct {
@@ -18,19 +19,19 @@ type System struct {
 	AppName         string
 	InstanceName    string
 	Environment     map[string]string
-	GUID            string
+	UUID            string
 	Host            string
 	SecurityContext *SecurityContext
 	Containers      []Container
 	InitContainers  []Container
 	Volumes         map[string]Volume
-	Username        string
+	UserName        string
 }
 
 type SecurityContext struct {
 	RunAsUser  string
 	RunAsGroup string
-	FsGroup    string
+	FSGroup    string
 }
 
 type Container struct {
@@ -115,7 +116,7 @@ func store(storage map[string][]string, name, value string) string {
 	return value // Return the value to not interfere with the template output
 }
 
-func ParseTemplates(dir string, log func(string)) (*template.Template, map[string][]string, error) {
+func ParseTemplates(dir string, logFunc func(string)) (*template.Template, map[string][]string, error) {
 	storage := make(map[string][]string)
 	// Get a list of all .tmpl files in the directory
 	files, err := filepath.Glob(filepath.Join(dir, "*.tmpl"))
@@ -133,8 +134,8 @@ func ParseTemplates(dir string, log func(string)) (*template.Template, map[strin
 	funcMap := sprig.TxtFuncMap()
 
 	funcMap["templateToString"] = func(name string, data interface{}) string {
-		if log != nil {
-			log(fmt.Sprintf("data:\n%v+\n", data))
+		if logFunc != nil {
+			logFunc(fmt.Sprintf("template to string data:\n%# v\n", pretty.Formatter(data)))
 		}
 		return RenderTemplateToString(tmpl, name, data)
 	}

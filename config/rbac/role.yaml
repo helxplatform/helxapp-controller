@@ -1,5 +1,38 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: helxapp-manager-role
+rules:
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxusers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxusers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - helx.renci.org
+  resources:
+  - helxusers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null

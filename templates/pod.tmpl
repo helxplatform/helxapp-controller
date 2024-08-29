@@ -1,13 +1,13 @@
 {{- define "podMetadata" }}
 metadata:
-  name: {{ .system.AppName }}-{{ .system.GUID }}
+  name: {{ .system.AppName }}-{{ .system.UUID }}
   labels:
-    name: {{ .system.AppName }}-{{ .system.GUID }}
-    app-name: {{ .system.AppName }}
-    username: {{ .system.Username }}
-    guid: {{ .system.GUID }}
-    app-class-name: {{ .system.AppClassName }}
-    instance-name: {{ .system.InstanceName }}
+    name: {{ .system.AppName }}-{{ .system.UUID }}
+    "helx.renci.org/app-name": {{ .system.AppName }}
+    "helx.renci.org/username": {{ .system.UserName }}
+    "helx.renci.org/id": {{ .system.UUID }}
+    "helx.renci.org/app-class-name": {{ .system.AppClassName }}
+    "helx.renci.org/instance-name": {{ .system.InstanceName }}
     executor: helxapp-controller
 {{- end -}}
 
@@ -39,8 +39,8 @@ securityContext:
   {{- if .RunAsGroup }}
   runAsGroup: {{ .RunAsGroup }}
   {{- end -}}
-  {{- if .FsGroup }}
-  fsGroup: {{ .FsGroup }}
+  {{- if .FSGroup }}
+  fsGroup: {{ .FSGroup }}
   {{- end }}
 {{- end }}
 

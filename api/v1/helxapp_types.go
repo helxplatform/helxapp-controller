@@ -56,8 +56,7 @@ type PortMap struct {
 
 // HelxAppStatus defines the observed state of HelxApp
 type HelxAppStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	ObservedGeneration int64 `json:"observedGeneration"`
 }
 
 // +kubebuilder:object:root=true

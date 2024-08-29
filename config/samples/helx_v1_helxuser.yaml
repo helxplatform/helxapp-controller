@@ -1,0 +1,12 @@
+apiVersion: helx.renci.org/v1
+kind: HelxUser
+metadata:
+  labels:
+    app.kubernetes.io/name: helxuser
+    app.kubernetes.io/instance: helxuser-sample
+    app.kubernetes.io/part-of: builder
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: builder
+  name: helxuser-sample
+spec:
+  # TODO(user): Add fields here

@@ -1,7 +1,7 @@
 apiVersion: helx.renci.org/v1
 kind: HelxApp
 metadata:
-  name: nginx1
+  name: nginx2
   namespace: jeffw
 spec:
   appClassName: nginx
@@ -11,3 +11,5 @@ spec:
       ports:
         - containerPort: 80
           port: 80
+      volumes:
+        mnt: bubba:/mnt/bubba

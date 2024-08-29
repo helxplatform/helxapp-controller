@@ -3,11 +3,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .system.AppName }}-{{ .system.GUID }}
+  labels:
+    "helx.renci.org/id": {{ .system.UUID }}
+  name: {{ .system.InstanceName }}-{{ .system.UUID }}
 spec:
   type: ClusterIP
   selector:
-    name: {{ .system.AppName }}-{{ .system.GUID }}
+    name: {{ .system.AppName }}-{{ .system.UUID }}
   ports:
   {{- range $_,$pmap := .container.Ports }}
     - protocol: {{ $pmap.Protocol }}

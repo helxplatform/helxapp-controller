@@ -3,16 +3,15 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    guid: {{ .system.GUID }}
-    app-name: {{ .system.AppName }}
-    username: {{ .system.Username }}
-  name: {{ .system.AppName }}-{{ .system.GUID }}
+    "helx.renci.org/id": {{ .system.UUID }}
+    "helx.renci.org/app-name": {{ .system.AppName }}
+    "helx.renci.org/username": {{ .system.UserName }}
+  name: {{ .system.InstanceName }}-{{ .system.UUID }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app-name: {{ .system.AppName }}
-      guid: {{ .system.GUID }}
+      "helx.renci.org/id": {{ .system.UUID }}
   strategy:
     rollingUpdate:
       maxSurge: 25%

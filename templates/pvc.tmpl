@@ -2,6 +2,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  labels:
+    "helx.renci.org/id": {{ .system.UUID }}
+    {{- if .volume.Attr.retain }}
+    "helx.renci.org/retain": true
+    {{- end }}
   name: {{ .volume.Attr.claim }}
 spec:
   accessModes:
