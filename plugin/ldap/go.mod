@@ -1,4 +1,4 @@
-module ldap_plugin
+module github.com/helxplatform/ldap-plugin
 
 go 1.20
 

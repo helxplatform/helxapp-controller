@@ -10,10 +10,9 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/helxplatform/helxapp-controller/connect"
 	"github.com/jackc/pgx/v4"
 	"github.com/kr/pretty"
-
-	"github.com/helxplatform/helxapp-controller/connect"
 )
 
 type System struct {

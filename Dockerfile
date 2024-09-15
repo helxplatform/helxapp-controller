@@ -16,12 +16,13 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go main.go
 COPY api/ api/
+COPY connect/ connect/
 COPY controllers/ controllers/
-COPY template_io/ template_io/
 COPY helxapp_operations/ helxapp_operations/
+COPY main.go main.go
 COPY templates/ templates/
+COPY template_io/ template_io/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
