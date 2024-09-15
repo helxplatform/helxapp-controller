@@ -12,6 +12,8 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/jackc/pgx/v4"
 	"github.com/kr/pretty"
+
+	"github.com/helxplatform/helxapp-controller/connect"
 )
 
 type System struct {
@@ -25,6 +27,7 @@ type System struct {
 	Containers      []Container
 	InitContainers  []Container
 	Volumes         map[string]Volume
+	UserHandle      *string
 	UserName        string
 }
 
@@ -142,6 +145,14 @@ func ParseTemplates(dir string, logFunc func(string)) (*template.Template, map[s
 
 	funcMap["store"] = func(name, value string) string {
 		return store(storage, name, value)
+	}
+
+	funcMap["get"] = func(url string) interface{} {
+		if res, err := connect.FetchData(url); err != nil {
+			return res
+		} else {
+			return nil
+		}
 	}
 
 	tmpl = template.New("").Funcs(funcMap)

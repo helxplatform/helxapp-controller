@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	helxv1 "github.com/helxplatform/helxapp/api/v1"
-	"github.com/helxplatform/helxapp/helxapp_operations"
+	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
+	"github.com/helxplatform/helxapp-controller/helxapp_operations"
 	"github.com/kr/pretty"
 )
 

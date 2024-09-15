@@ -1,0 +1,10 @@
+replicaCount: 1
+global:
+  adminPassword: "jKZMIldo"
+  configPassword: "QXCBjrXu"
+service:
+  type: LoadBalancer
+persistence:
+  enabled: true
+replication:
+  enabled: false

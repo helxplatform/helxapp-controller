@@ -9,8 +9,8 @@ import (
 	"text/template"
 
 	"github.com/go-logr/logr"
-	helxv1 "github.com/helxplatform/helxapp/api/v1"
-	"github.com/helxplatform/helxapp/template_io"
+	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
+	"github.com/helxplatform/helxapp-controller/template_io"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -519,17 +519,9 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 				Environment:  systemEnv,
 				Host:         "",
 				UUID:         instance.Status.UUID,
+				UserHandle:   user.Spec.UserHandle,
 				UserName:     instance.Spec.UserName,
 				Volumes:      volumes,
-			}
-
-			if user.Status.FSGroup != "" || user.Status.RunAsUser != "" || user.Status.RunAsGroup != "" {
-				sc := template_io.SecurityContext{
-					RunAsUser:  user.Status.RunAsUser,
-					RunAsGroup: user.Status.RunAsGroup,
-					FSGroup:    user.Status.FSGroup,
-				}
-				system.SecurityContext = &sc
 			}
 
 			simpleInfoLogger("applying templates")

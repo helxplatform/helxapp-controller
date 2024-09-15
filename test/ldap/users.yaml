@@ -1,0 +1,46 @@
+users:
+- cn: John Doe
+  displayName: Johnny Doe
+  fsGroup: 2001
+  givenName: John
+  mail: ''
+  o: Example Organization
+  ou: Engineering
+  runAsGroup: 1001
+  runAsUser: 1001
+  sn: Doe
+  supplementalGroups:
+  - 3001
+  - 3002
+  telephoneNumber: 555-1234
+  uid: user01
+- cn: Jane Smith
+  displayName: Jani Smith
+  fsGroup: 2002
+  givenName: Jane
+  mail: ''
+  o: Example Organization
+  ou: Human Resources
+  runAsGroup: 1002
+  runAsUser: 1002
+  sn: Smith
+  supplementalGroups:
+  - 3003
+  telephoneNumber: 555-5678
+  uid: user02
+- cn: Sam Brown
+  displayName: Sammy Brown
+  fsGroup: 2003
+  givenName: Sam
+  mail: ''
+  o: Example Organization
+  ou: Marketing
+  runAsGroup: 1003
+  runAsUser: 1003
+  sn: Brown
+  supplementalGroups:
+  - 3004
+  - 3005
+  telephoneNumber: 555-9012
+  uid: user03
+

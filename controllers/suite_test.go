@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	helxv1 "github.com/helxplatform/helxapp/api/v1"
+	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 

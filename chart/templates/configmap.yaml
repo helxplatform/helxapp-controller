@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-ldap-plugin-config
+  labels:
+    app: {{ .Release.Name }}-ldap-api
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+ldap-config.json: |
+  {
+    "host": "{{ .Values.plugins.ldap.host | quote }}",
+    "port": {{ .Values.plugins.ldap.port }},
+    "bindDN": "{{ .Values.plugins.ldap.bindDN | quote }}",
+    "password": "{{ .Values.plugins.ldap.password | quote }}",
+    "baseDN": "{{ .Values.plugins.ldap.baseDN | quote }}"
+  }
+

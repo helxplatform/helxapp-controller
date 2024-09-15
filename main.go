@@ -32,10 +32,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	helxv1 "github.com/helxplatform/helxapp/api/v1"
-	"github.com/helxplatform/helxapp/controllers"
-	"github.com/helxplatform/helxapp/helxapp_operations"
-	"github.com/helxplatform/helxapp/template_io"
+	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
+	"github.com/helxplatform/helxapp-controller/controllers"
+	"github.com/helxplatform/helxapp-controller/helxapp_operations"
+	"github.com/helxplatform/helxapp-controller/template_io"
 	//+kubebuilder:scaffold:imports
 )
 

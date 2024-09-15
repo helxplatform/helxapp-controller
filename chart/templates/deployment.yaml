@@ -57,6 +57,18 @@ spec:
               port: readiness-probe
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        - name: {{ .Chart.Name }}-ldap-plugin
+          image: {{ .Values.plugins.ldap.image.repository }}:{{ .Values.plugins.ldap.image.tag | default "latest" }}
+          ports:
+            - containerPort: 8180
+          volumeMounts:
+            - name: ldap-plugin-config
+              mountPath: "/etc/config"
+              readOnly: true
+      volumes:
+        - name: ldap-plugin-config
+          configMap:
+            name: {{ .Release.Name }}-ldap-plugin-config
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

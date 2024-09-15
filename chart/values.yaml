@@ -102,3 +102,29 @@ env:
   dbName: "helxapp_config"
   dbPassword: ""
   dbUser: "postgres" 
+
+
+#
+# LDAP Plugin
+# 
+# A facade for ldap backend.  The connection need to be set for forwarding to work
+#
+# Example:
+#
+#   host: "ldap.example.com"
+#   port: 389
+#   bindDN: "cn=admin,dc=example,dc=com"
+#   password: "password"
+#   baseDN: "dc=example,dc=com"
+#
+
+plugins:
+  ldap:
+    image:
+      repository: "containers.renci.org/helxplatform/ldap-plugin"
+      tag: latest
+    host: ""
+    port: 389
+    bindDN: ""
+    password: ""
+    baseDN: ""

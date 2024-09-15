@@ -1,4 +1,4 @@
-module github.com/helxplatform/helxapp
+module github.com/helxplatform/helxapp-controller
 
 go 1.19
 

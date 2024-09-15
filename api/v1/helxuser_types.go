@@ -29,7 +29,7 @@ type HelxUserSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of HelxUser. Edit helxuser_types.go to remove/update
-	UserHandles []string `json:"userHandles,omitempty"`
+	UserHandle *string `json:"userHandle,omitempty"`
 }
 
 // HelxUserStatus defines the observed state of HelxUser
@@ -37,9 +37,6 @@ type HelxUserStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	ObservedGeneration int64    `json:"observedGeneration"`
-	RunAsUser          string   `json:"runAsUser,omitempty"`
-	RunAsGroup         string   `json:"runAsGroup,omitempty"`
-	FSGroup            string   `json:"fsGroup,omitempty"`
 	SupplementalGroups []string `json:"supplementalGroups,omitempty"`
 }
 
