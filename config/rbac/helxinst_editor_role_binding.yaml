@@ -8,12 +8,12 @@ metadata:
     app.kubernetes.io/created-by: builder
     app.kubernetes.io/part-of: builder
     app.kubernetes.io/managed-by: kustomize
-  name: helxappinstance-editor-rolebinding
+  name: helxinst-editor-rolebinding
   namespace: jeffw
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: helxappinstance-editor-role
+  name: helxainst-editor-role
 subjects:
 - kind: ServiceAccount
   name: jeffw

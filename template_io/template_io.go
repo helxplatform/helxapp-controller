@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
 	"github.com/helxplatform/helxapp-controller/connect"
 	"github.com/jackc/pgx/v4"
 	"github.com/kr/pretty"
@@ -26,14 +28,15 @@ type System struct {
 	Containers      []Container
 	InitContainers  []Container
 	Volumes         map[string]Volume
-	UserHandle      *string
+	UserInfo        map[string]interface{}
 	UserName        string
 }
 
 type SecurityContext struct {
-	RunAsUser  string
-	RunAsGroup string
-	FSGroup    string
+	RunAsUser          string
+	RunAsGroup         string
+	FSGroup            string
+	SupplementalGroups []string
 }
 
 type Container struct {
@@ -96,6 +99,66 @@ type Volume struct {
 	Name   string
 	Scheme string
 	Attr   map[string]string
+}
+
+func ExtractSCFromCR(sc *helxv1.SecurityContext) *SecurityContext {
+	var res SecurityContext = SecurityContext{}
+	var empty bool = true
+
+	if sc != nil {
+		if sc.FSGroup != nil {
+			res.FSGroup = strconv.FormatInt(*sc.FSGroup, 10)
+			empty = false
+		}
+		if sc.RunAsGroup != nil {
+			res.RunAsGroup = strconv.FormatInt(*sc.RunAsGroup, 10)
+			empty = false
+		}
+		if sc.RunAsUser != nil {
+			res.RunAsUser = strconv.FormatInt(*sc.RunAsUser, 10)
+			empty = false
+		}
+		for _, value := range sc.SupplementalGroups {
+			res.SupplementalGroups = append(res.SupplementalGroups, strconv.FormatInt(value, 10))
+			empty = false
+		}
+		if !empty {
+			return &res
+		}
+	}
+	return nil
+}
+
+func ExtractSCFromMap(data map[string]interface{}) *SecurityContext {
+	var res SecurityContext = SecurityContext{}
+	var empty bool = true
+
+	if value, ok := data["fsGroup"].(string); ok {
+		res.FSGroup = value
+		empty = false
+	}
+	if value, ok := data["runAsGroup"].(string); ok {
+		res.RunAsGroup = value
+		empty = false
+	}
+	if value, ok := data["runAsUser"].(string); ok {
+		res.RunAsUser = value
+		empty = false
+	}
+	if rawArray, ok := data["supplementalGroups"].([]interface{}); ok {
+		empty = false
+		for _, val := range rawArray {
+			if str, ok := val.(string); ok {
+				res.SupplementalGroups = append(res.SupplementalGroups, str)
+			}
+		}
+	}
+
+	if !empty {
+		return &res
+	} else {
+		return nil
+	}
 }
 
 func RenderTemplateToString(tmpl *template.Template, name string, data interface{}) string {

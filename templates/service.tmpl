@@ -4,6 +4,7 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    executor: helxapp-controller
     "helx.renci.org/id": {{ .system.UUID }}
   name: {{ .system.InstanceName }}-{{ .system.UUID }}
 spec:

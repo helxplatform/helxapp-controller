@@ -49,10 +49,6 @@ spec:
                   this file'
                 format: int64
                 type: integer
-              supplementalGroups:
-                items:
-                  type: string
-                type: array
             required:
             - observedGeneration
             type: object

@@ -2,13 +2,13 @@
 metadata:
   name: {{ .system.AppName }}-{{ .system.UUID }}
   labels:
+    executor: helxapp-controller
     name: {{ .system.AppName }}-{{ .system.UUID }}
     "helx.renci.org/app-name": {{ .system.AppName }}
     "helx.renci.org/username": {{ .system.UserName }}
     "helx.renci.org/id": {{ .system.UUID }}
     "helx.renci.org/app-class-name": {{ .system.AppClassName }}
     "helx.renci.org/instance-name": {{ .system.InstanceName }}
-    executor: helxapp-controller
 {{- end -}}
 
 {{- define "containerList" }}
@@ -41,6 +41,12 @@ securityContext:
   {{- end -}}
   {{- if .FSGroup }}
   fsGroup: {{ .FSGroup }}
+  {{- end }}
+  {{- if .SupplementalGroups }}
+  SupplementalGroups:
+  {{- range $_,$group := .SupplementalGroups }}
+    - {{ $group }}
+  {{- end }} 
   {{- end }}
 {{- end }}
 

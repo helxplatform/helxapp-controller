@@ -16,12 +16,12 @@ fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: false
+  create: true
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: "helxapp-controller-manager"
+  name: ""
 
 podAnnotations: {}
 
@@ -107,15 +107,14 @@ env:
 #
 # LDAP Plugin
 # 
-# A facade for ldap backend.  The connection need to be set for forwarding to work
+# ldap plugin configuration
+# Defaults assume use of openldap
 #
-# Example:
-#
-#   host: "ldap.example.com"
+#   host: "localhost"
 #   port: 389
-#   bindDN: "cn=admin,dc=example,dc=com"
-#   password: "password"
-#   baseDN: "dc=example,dc=com"
+#   bindDN: "cn=admin,dc=example,dc=org"
+#   password: ""
+#   baseDN: "ou=users,dc=example,dc=org"
 #
 
 plugins:
@@ -123,8 +122,8 @@ plugins:
     image:
       repository: "containers.renci.org/helxplatform/ldap-plugin"
       tag: latest
-    host: ""
+    host: "ldap"
     port: 389
-    bindDN: ""
+    bindDN: "cn=admin,dc=example,dc=org"
     password: ""
-    baseDN: ""
+    baseDN: "ou=users,dc=example,dc=org"

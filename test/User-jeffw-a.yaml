@@ -1,0 +1,7 @@
+apiVersion: helx.renci.org/v1
+kind: HelxUser
+metadata:
+  name: jeffw
+  namespace: jeffw
+spec:
+  userHandle: http://localhost:8180/users/jeffw

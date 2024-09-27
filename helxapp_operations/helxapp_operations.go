@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	helxv1 "github.com/helxplatform/helxapp-controller/api/v1"
+	"github.com/helxplatform/helxapp-controller/connect"
 	"github.com/helxplatform/helxapp-controller/template_io"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -435,14 +436,15 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.
 
 		resources := transformResources(service.Name, instance.Spec.Resources)
 		container := template_io.Container{
-			Name:         service.Name,
-			Command:      service.Command[:],
-			Environment:  service.Environment,
-			HasService:   hasService,
-			Image:        service.Image,
-			Ports:        ports,
-			Resources:    resources,
-			VolumeMounts: volumeList,
+			Name:            service.Name,
+			Command:         service.Command[:],
+			Environment:     service.Environment,
+			HasService:      hasService,
+			Image:           service.Image,
+			Ports:           ports,
+			Resources:       resources,
+			SecurityContext: template_io.ExtractSCFromCR(service.SecurityContext),
+			VolumeMounts:    volumeList,
 		}
 
 		containers = append(containers, container)
@@ -519,9 +521,19 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 				Environment:  systemEnv,
 				Host:         "",
 				UUID:         instance.Status.UUID,
-				UserHandle:   user.Spec.UserHandle,
 				UserName:     instance.Spec.UserName,
 				Volumes:      volumes,
+			}
+
+			if instance.Spec.SecurityContext != nil {
+				system.SecurityContext = template_io.ExtractSCFromCR(instance.Spec.SecurityContext)
+			} else if user.Spec.UserHandle != nil {
+				if info, err := connect.FetchData(*user.Spec.UserHandle); err != nil {
+					simpleErrorLogger(err, fmt.Sprintf("unable to fetch user info from %s ", *user.Spec.UserHandle))
+				} else {
+					system.UserInfo = info
+					system.SecurityContext = template_io.ExtractSCFromMap(info)
+				}
 			}
 
 			simpleInfoLogger("applying templates")

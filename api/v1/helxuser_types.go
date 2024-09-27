@@ -36,8 +36,7 @@ type HelxUserSpec struct {
 type HelxUserStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	ObservedGeneration int64    `json:"observedGeneration"`
-	SupplementalGroups []string `json:"supplementalGroups,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration"`
 }
 
 //+kubebuilder:object:root=true

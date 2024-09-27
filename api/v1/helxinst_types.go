@@ -25,9 +25,10 @@ import (
 
 // HelxInstanceSpec defines the desired state of HelxInstance
 type HelxInstSpec struct {
-	AppName   string               `json:"appName"`
-	Resources map[string]Resources `json:"resources,omitempty"`
-	UserName  string               `json:"userName"`
+	AppName         string               `json:"appName"`
+	SecurityContext *SecurityContext     `json:"securityContext,omitempty"`
+	Resources       map[string]Resources `json:"resources,omitempty"`
+	UserName        string               `json:"userName"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp

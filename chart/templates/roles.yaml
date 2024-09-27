@@ -1,0 +1,131 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-service-manager-role
+rules:
+- apiGroups: [""]
+  resources: 
+  - services
+  verbs: 
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-service-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "helxapp-controller.fullname" . }}-service-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-pvc-manager-role
+rules:
+- apiGroups: [""]
+  resources: 
+  - persistentvolumeclaims
+  verbs: 
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-pvc-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "helxapp-controller.fullname" . }}-pvc-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-deployment-manager-role
+rules:
+- apiGroups: 
+  - apps
+  resources: 
+  - deployments
+  verbs: 
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-deployment-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "helxapp-controller.fullname" . }}-deployment-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-helxapp-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: helxapp-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-helxinst-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: helxinst-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "helxapp-controller.fullname" . }}-helxuser-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: helxuser-manager-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "helxapp-controller.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

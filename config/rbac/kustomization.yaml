@@ -4,15 +4,25 @@ resources:
 # if your manager will use a service account that exists at
 # runtime. Be sure to update RoleBinding and ClusterRoleBinding
 # subjects if changing service account names.
-- service_account.yaml
-- role.yaml
-- role_binding.yaml
-- deployment_manager_role.yaml
-- deployment_manager_rolebinding.yaml
-- pvc_manager_role.yaml
-- pvc_manager_rolebinding.yaml
-- service_manager_role.yaml
-- service_manager_rolebinding.yaml
+#- service_account.yaml
+#- role.yaml
+#- role_binding.yaml
+#- deployment_manager_role.yaml
+#- deployment_manager_rolebinding.yaml
+#- pvc_manager_role.yaml
+#- pvc_manager_rolebinding.yaml
+#- service_manager_role.yaml
+#- service_manager_rolebinding.yaml
+- helxapp_editor_role.yaml
+- helxapp_manager_role.yaml
+- helxapp_viewer_role.yaml
+- helxinst_editor_role.yaml
+- helxinst_manager_role.yaml
+- helxinst_viewer_role.yaml
+- helxuser_editor_role.yaml
+- helxuser_manager_role.yaml
+- helxuser_viewer_role.yaml
+
 # Permits interacting configmaps, leases, events
 # This is available by default for namespace owners
 #

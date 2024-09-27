@@ -126,7 +126,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	configPath := "/etc/config/ldap-config.json"
+	configPath := "/etc/config/ldap-plugin-config.json"
 	err := loadConfig(configPath)
 
 	if err != nil {

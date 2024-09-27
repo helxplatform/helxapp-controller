@@ -32,14 +32,15 @@ type HelxAppSpec struct {
 
 // Service represents a single service in a HeLxApp
 type Service struct {
-	Name           string                      `json:"name"`
-	Image          string                      `json:"image"`
-	Command        []string                    `json:"command,omitempty"`
-	Environment    map[string]string           `json:"environment,omitempty"`
-	Init           bool                        `json:"init,omitempty"`
-	Ports          []PortMap                   `json:"ports,omitempty"`
-	ResourceBounds map[string]ResourceBoundary `json:"resourceBounds,omitempty"`
-	Volumes        map[string]string           `json:"volumes,omitempty"`
+	Name            string                      `json:"name"`
+	Image           string                      `json:"image"`
+	Command         []string                    `json:"command,omitempty"`
+	Environment     map[string]string           `json:"environment,omitempty"`
+	Init            bool                        `json:"init,omitempty"`
+	Ports           []PortMap                   `json:"ports,omitempty"`
+	ResourceBounds  map[string]ResourceBoundary `json:"resourceBounds,omitempty"`
+	SecurityContext *SecurityContext            `json:"securityContext,omitempty"`
+	Volumes         map[string]string           `json:"volumes,omitempty"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp
@@ -52,6 +53,13 @@ type ResourceBoundary struct {
 type PortMap struct {
 	ContainerPort int32 `json:"containerPort"`
 	Port          int32 `json:"port,omitempty"`
+}
+
+type SecurityContext struct {
+	RunAsUser          *int64  `json:"runAsUser,omitempty"`
+	RunAsGroup         *int64  `json:"runAsGroup,omitempty"`
+	FSGroup            *int64  `json:"fsGroup,omitempty"`
+	SupplementalGroups []int64 `json:"supplementalGroups,omitempty"`
 }
 
 // HelxAppStatus defines the observed state of HelxApp

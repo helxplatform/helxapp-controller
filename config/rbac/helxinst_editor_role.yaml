@@ -1,20 +1,20 @@
-# permissions for end users to edit helxapps.
+# permissions for end users to edit helxappinstances.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: helxapp-editor-role
+    app.kubernetes.io/instance: helxinst-editor-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: builder
     app.kubernetes.io/part-of: builder
     app.kubernetes.io/managed-by: kustomize
-  name: helxapp-editor-role
+  name: helxinst-editor-role
 rules:
 - apiGroups:
   - helx.renci.org
   resources:
-  - helxapps
+  - helxinsts
   verbs:
   - create
   - delete
@@ -26,6 +26,6 @@ rules:
 - apiGroups:
   - helx.renci.org
   resources:
-  - helxapps/status
+  - helxinsts/status
   verbs:
   - get

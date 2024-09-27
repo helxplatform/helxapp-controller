@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    executor: helxapp-controller
     "helx.renci.org/id": {{ .system.UUID }}
     "helx.renci.org/app-name": {{ .system.AppName }}
     "helx.renci.org/username": {{ .system.UserName }}

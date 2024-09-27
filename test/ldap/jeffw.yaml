@@ -1,0 +1,18 @@
+users:
+- uid: jeffw
+  cn: Jeff Waller
+  displayName: Jeff Waller
+  fsGroup: 2001
+  givenName: Jeff
+  mail: truthset@gmail.com
+  o: Test Org
+  ou: Engineering
+  runAsGroup: 1001
+  runAsUser: 1001
+  sn: Waller
+  supplementalGroups:
+  - 0
+  - 3001
+  - 3002
+  telephoneNumber: 555-1212
+

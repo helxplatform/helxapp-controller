@@ -6,8 +6,19 @@ metadata:
 spec:
   appClassName: JupyterLab
   services:
+#    - name: setup
+#      command:
+#        -  "mkdir -p /home/{{ .system.UserName }} && mkdir -p /home/shared && ls -aln /home && echo OK"
+#      image: busybox:stable
+#      init: true
+#      securityContext:
+#        runAsGroup: 0
+#      volumes:
+#        home: "{{ .system.UserName }}-home:/home/{{ .system.UserName }},rwx,retain"
     - name: main
-      image: containers.renci.org/helxplatform/jupyter-lab:latest
+      environment:
+        NB_PREFIX: "/"
+      image: containers.renci.org/helxplatform/jupyter/ordr-d:latest
       ports:
         - containerPort: 8888
           port: 8888
