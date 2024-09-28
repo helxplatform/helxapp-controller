@@ -4,4 +4,4 @@ metadata:
   name: jeffw
   namespace: jeffw
 spec:
-  userHandle: http://localhost:8180/users/jeffw
+  userHandle: http://helxapp-ldap-plugin.jeffw:8080/users/jeffw

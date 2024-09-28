@@ -1,14 +1,14 @@
-# Default values for helxapp-c.
+# Default values for helxapp-ldap-plugin.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
 
 image:
-  repository: "containers.renci.org/helxplatform/helxapp-controller"
+  repository: "containers.renci.org/helxplatform/helxapp-ldap-plugin"
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: latest
 
 imagePullSecrets: []
 nameOverride: ""
@@ -81,24 +81,17 @@ tolerations: []
 
 affinity: {}
 
-postgresql:
-  enabled: false
-  primary:
-    initdb:
-      scripts:
-        create-db.sql:
-          CREATE DATABASE helxapp_config;
-        create-schema.sql: |
-          \connect helxapp_config;
-          CREATE TABLE templates (
-            set_name text NOT NULL,
-            name text NOT NULL,
-            content text,
-            PRIMARY KEY (set_name, name)
-          );
-
-env:
-  dbHost: "postgresql"
-  dbName: "helxapp_config"
-  dbPassword: ""
-  dbUser: "postgres" 
+# Defaults assume use of openldap
+#
+#   host: "localhost"
+#   port: 389
+#   bindDN: "cn=admin,dc=example,dc=org"
+#   password: ""
+#   baseDN: "ou=users,dc=example,dc=org"
+#
+config:
+  host: "ldap"
+  port: 389
+  bindDN: "cn=admin,dc=example,dc=org"
+  password: ""
+  baseDN: "ou=users,dc=example,dc=org"

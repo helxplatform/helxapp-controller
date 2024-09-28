@@ -1,1 +1,1 @@
-docker push containers.renci.org/helxplatform/ldap-plugin:latest
+docker push containers.renci.org/helxplatform/helxapp-ldap-plugin:latest

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helxapp-ldap-plugin.fullname" . }}
+  labels:
+    {{- include "helxapp-ldap-plugin.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: ldap-proxy
+      protocol: TCP
+      name: ldap-proxy
+  selector:
+    {{- include "helxapp-ldap-plugin.selectorLabels" . | nindent 4 }}

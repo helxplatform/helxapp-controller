@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helxapp-controller.fullname" . }}
+  name: {{ include "helxapp-ldap-plugin.fullname" . }}
   labels:
-    {{- include "helxapp-controller.labels" . | nindent 4 }}
+    {{- include "helxapp-ldap-plugin.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "helxapp-controller.selectorLabels" . | nindent 6 }}
+      {{- include "helxapp-ldap-plugin.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "helxapp-controller.selectorLabels" . | nindent 8 }}
+        {{- include "helxapp-ldap-plugin.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "helxapp-controller.serviceAccountName" . }}
+      serviceAccountName: {{ include "helxapp-ldap-plugin.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -34,31 +34,27 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: readiness-probe
-              containerPort: 8081
-            - name: liveness-probe
-              containerPort: 8081
-            - name: metrics
-              containerPort: 8080
-          env:
-            - name: DB_HOST
-              value: {{ include "helxapp-controller.fullname" . }}-{{ .Values.env.dbHost }}
-            - name: DB_NAME
-              value: {{ .Values.env.dbName }}
-            - name: DB_PASSWORD
-              value: {{ .Values.env.dbPassword }}
-            - name: DB_USER
-              value: {{ .Values.env.dbUser }}
+            - name: ldap-proxy
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
-              port: liveness-probe
+              port: ldap-proxy
           readinessProbe:
             httpGet:
               path: /readyz
-              port: readiness-probe
+              port: ldap-proxy
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/config"
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/gorilla/mux"
@@ -38,12 +39,15 @@ type User struct {
 }
 
 var ldapConfig LDAPConfig
+var mutex sync.Mutex
 
 func loadConfig(path string) error {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
+	mutex.Lock()
+	defer mutex.Unlock()
 	err = json.Unmarshal(file, &ldapConfig)
 	if err != nil {
 		return err
@@ -53,6 +57,8 @@ func loadConfig(path string) error {
 
 // searchLDAP searches the LDAP server for a user by UID
 func searchLDAP(username string) (*User, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	// Connect to LDAP
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", ldapConfig.Host, ldapConfig.Port))
 	if err != nil {
@@ -125,8 +131,26 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonResponse)
 }
 
+// LivenessProbeHandler checks if the application is running
+func LivenessProbeHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("alive"))
+}
+
+// ReadinessProbeHandler checks if the application is ready to accept traffic
+func ReadinessProbeHandler(w http.ResponseWriter, r *http.Request) {
+	// Example: Attempt to load configuration as a proxy for readiness
+	err := loadConfig("/etc/config/config.json")
+	if err != nil {
+		http.Error(w, "Not Ready", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ready"))
+}
+
 func main() {
-	configPath := "/etc/config/ldap-plugin-config.json"
+	configPath := "/etc/config/config.json"
 	err := loadConfig(configPath)
 
 	if err != nil {
@@ -135,5 +159,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/users/{username}", userHandler)
-	log.Fatal(http.ListenAndServe(":8180", r))
+	r.HandleFunc("/healthz", LivenessProbeHandler) // Liveness probe endpoint
+	r.HandleFunc("/readyz", ReadinessProbeHandler) // Readiness probe endpoint
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
