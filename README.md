@@ -1,78 +1,111 @@
-# builder
-// TODO(user): Add simple overview of use/purpose
+# helxapp-controller
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A Kubernetes operator that manages application deployments via three CRDs: **HelxApp** (application template), **HelxInst** (instance request), and **HelxUser** (user record). When all three exist and are correlated, the controller synthesizes Deployments, Services, and PersistentVolumeClaims.
 
-## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+See [docs/execution-model.md](docs/execution-model.md) for detailed architecture documentation.
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
+## Deployment
 
-```sh
-kubectl apply -f config/samples/
-```
+The helm chart supports two installation modes controlled by the `cluster` value (default `false`).
 
-2. Build and push your image to the location specified by `IMG`:
+### Cluster install (cluster admin)
 
-```sh
-make docker-build docker-push IMG=<some-registry>/builder:tag
-```
+A cluster admin performs the one-time setup: installing CRDs and optionally deploying the controller cluster-wide.
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=<some-registry>/builder:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-### How it works
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
-
-### Test It Out
-1. Install the CRDs into the cluster:
+1. Install CRDs:
 
 ```sh
 make install
 ```
 
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
+2. Deploy the controller cluster-wide with the helm chart:
+
+```sh
+helm install helxapp-controller chart/ --set cluster=true
+```
+
+Or equivalently via kustomize:
+
+```sh
+make deploy IMG=<registry>/helxapp-controller:tag
+```
+
+### Namespace install (developer)
+
+For developers running their own controller instance in a namespace, a cluster admin must first grant the developer’s service account CRD permissions. This is needed because Kubernetes RBAC escalation prevention blocks a service account from creating roles that grant permissions it doesn’t already hold.
+
+**Step 1 — Cluster admin grants access (one-time per namespace):**
+
+```sh
+make grant-access SA=<namespace>:<service-account>
+```
+
+For example:
+
+```sh
+make grant-access SA=jeffw:jeffw
+```
+
+This creates a ClusterRole with `helx.renci.org` CRD permissions and a RoleBinding in the target namespace granting those permissions to the service account.
+
+**Step 2 — Developer installs the helm chart:**
+
+```sh
+helm install helxapp-controller chart/
+```
+
+With `cluster=false` (the default), the chart creates only namespace-scoped Roles and RoleBindings. No cluster-admin privileges are required for the helm install itself.
+
+### Uninstall
+
+Remove the controller:
+
+```sh
+helm uninstall helxapp-controller
+```
+
+Remove CRDs from the cluster (cluster admin):
+
+```sh
+make uninstall
+```
+
+## Development
+
+### Running locally
+
+1. Install CRDs into the cluster:
+
+```sh
+make install
+```
+
+2. Run the controller locally (uses current kubeconfig context):
 
 ```sh
 make run
 ```
 
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
+### Building
 
 ```sh
-make manifests
+make build                                        # compile to bin/manager
+make docker-build docker-push IMG=<registry>:tag  # build and push container image
 ```
 
-**NOTE:** Run `make --help` for more information on all potential `make` targets
+### Testing
+
+```sh
+make test
+```
+
+### Modifying the API definitions
+
+After editing `api/v1/*_types.go`, regenerate manifests and DeepCopy methods:
+
+```sh
+make manifests generate
+```
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
