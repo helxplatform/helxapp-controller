@@ -130,7 +130,7 @@ volumeMounts:
     {{ end }}
 {{- end }}
 {{- end }}
-
+, 
 {{- define "containerSpec" }}
 {{- with $context := . }}
 {{- with $container := $context.container }}
@@ -145,7 +145,10 @@ volumeMounts:
     {{- end }}
   {{- end }}
   {{- templateToString "containerEnv" $context | indent 2 }}
-  image: {{ $container.Image }}
+  image: {{ $container.Image.ImageName }}
+  {{- if $container.Image.Attr.Always }}
+  imagePullPolicy: Always
+  {{- end }}
   {{- templateToString "containerPorts" $container | indent 2 }}
   {{- templateToString "containerResources" $container | indent 2 }}
   {{- templateToString "containerLivenessProbe" $context | indent 2 }}

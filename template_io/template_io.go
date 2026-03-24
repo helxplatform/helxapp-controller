@@ -39,9 +39,14 @@ type SecurityContext struct {
 	SupplementalGroups []string
 }
 
+type Image struct {
+	ImageName string
+	Attr      map[string]string
+}
+
 type Container struct {
 	Name            string
-	Image           string
+	Image           Image
 	Command         []string
 	Environment     map[string]string
 	HasService      bool

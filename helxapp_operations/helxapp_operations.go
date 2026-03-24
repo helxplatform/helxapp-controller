@@ -372,6 +372,38 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 	return &templateVolume, &templateVolumeMount, nil
 }
 
+// ParseImageAndOptions parses a string with an image name and an options string
+// The part before the first comma is treated as the image name,
+// The part after the first comma is a comma-separated list of key=value pairs,
+// where value is optional and defaults to "true".
+func processImageAndOptions(input string) (string, map[string]string) {
+	// Split the input string at the first comma
+	parts := strings.SplitN(input, ",", 2)
+	imageName := parts[0] // The image name is the part before the first comma
+	options := ""
+	if len(parts) > 1 {
+		options = parts[1] // The options string is the part after the first comma
+	}
+
+	// Initialize the map to store options
+	attr := make(map[string]string)
+
+	// Parse the options into the map
+	if options != "" {
+		optionPairs := regexp.MustCompile(`([^:#,=]+)(?:=([^:#,=]+))?`)
+		for _, pair := range optionPairs.FindAllStringSubmatch(options, -1) {
+			key := pair[1]
+			value := "true" // Default to "true" if no explicit value
+			if len(pair) > 2 && pair[2] != "" {
+				value = pair[2]
+			}
+			attr[key] = value
+		}
+	}
+
+	return imageName, attr
+}
+
 // processPorts creates port mappings and checks if any service is available.
 func transformPorts(srcPorts []helxv1.PortMap) ([]template_io.PortMap, bool) {
 	var dstPorts []template_io.PortMap
@@ -421,6 +453,14 @@ func transformResources(serviceName string, resources map[string]helxv1.Resource
 	return template_io.Resources{}
 }
 
+func transFormImage(imageString string) template_io.Image {
+	imageName, attr := processImageAndOptions(imageString)
+	return template_io.Image{
+		ImageName: imageName,
+		Attr:      attr,
+	}
+}
+
 // ServiceProcessor processes the services from the application spec and returns containers.
 func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.Container, map[string]*template_io.Volume, error) {
 	containers := []template_io.Container{}
@@ -440,7 +480,7 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.
 			Command:         service.Command[:],
 			Environment:     service.Environment,
 			HasService:      hasService,
-			Image:           service.Image,
+			Image:           transFormImage(service.Image),
 			Ports:           ports,
 			Resources:       resources,
 			SecurityContext: template_io.ExtractSCFromCR(service.SecurityContext),

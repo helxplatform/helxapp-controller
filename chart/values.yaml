@@ -23,6 +23,10 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# If true, install cluster-level resources (ClusterRoles, CRDs).
+# If false (default), assume they already exist and only create bindings.
+cluster: false
+
 podAnnotations: {}
 
 podSecurityContext: {}

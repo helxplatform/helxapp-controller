@@ -64,7 +64,7 @@ func TestRenderNginx(t *testing.T) {
 		Containers: []Container{
 			{
 				Name:    "nginx-test",
-				Image:   "nginx:latest",
+				Image:   Image{ImageName: "nginx:latest", Attr: map[string]string{}},
 				Command: []string{},
 				Environment: map[string]string{
 					"TEST_ENV_VAR": "test",

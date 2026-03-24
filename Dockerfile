@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.20-bullseye as builder
+FROM golang:1.20-bullseye AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
