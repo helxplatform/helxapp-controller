@@ -1,6 +1,7 @@
 package helxapp_operations
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -1163,5 +1164,344 @@ func TestGenerateArtifacts_NoServicePort(t *testing.T) {
 	svc := artifacts.Services["main"]
 	if strings.Contains(svc.Render, "kind: Service") {
 		t.Error("service render should NOT contain 'kind: Service' when Port=0")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Additional coverage tests
+// ---------------------------------------------------------------------------
+
+// 1. GetUserNameFromInst — nil inst case
+func TestGetUserNameFromInst_Nil(t *testing.T) {
+	got := GetUserNameFromInst(nil)
+	if got != "" {
+		t.Errorf("expected empty string for nil inst, got %s", got)
+	}
+}
+
+// 2. GetUserNameFromInst — empty UserName
+func TestGetUserNameFromInst_EmptyUserName(t *testing.T) {
+	inst := makeInst("ns", "inst1", "myapp", "", "uuid-1")
+	got := GetUserNameFromInst(inst)
+	if got != "" {
+		t.Errorf("expected empty string for empty UserName, got %s", got)
+	}
+}
+
+// 3. GetObjFromMap — not found case via GetApp
+func TestGetApp_NotFound(t *testing.T) {
+	resetTables()
+	got := GetApp("nonexistent")
+	if got != nil {
+		t.Errorf("expected nil for nonexistent app, got %+v", got)
+	}
+}
+
+// 4. GetObjFromMap — not found case via GetUser
+func TestGetUser_NotFound(t *testing.T) {
+	resetTables()
+	got := GetUser("nonexistent")
+	if got != nil {
+		t.Errorf("expected nil for nonexistent user, got %+v", got)
+	}
+}
+
+// 5. DeleteInst — verify associations are cleaned up from appTable and userTable
+func TestDeleteInst_CleansAssociations(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "cls", nil)
+	user := makeUser("ns", "alice", nil)
+	AddApp(app)
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	AddInst(inst)
+
+	// Verify associations exist before delete
+	appElem, ok := appTable["ns/myapp"]
+	if !ok {
+		t.Fatal("app not in table before delete")
+	}
+	if !appElem.InstSet["ns/inst1"] {
+		t.Error("inst not in app's InstSet before delete")
+	}
+
+	userElem, ok := userTable["ns/alice"]
+	if !ok {
+		t.Fatal("user not in table before delete")
+	}
+	if !userElem.InstSet["ns/inst1"] {
+		t.Error("inst not in user's InstSet before delete")
+	}
+
+	// Delete the inst
+	DeleteInst("ns/inst1")
+
+	// Verify inst is gone
+	_, found := GetInst("ns/inst1")
+	if found {
+		t.Error("inst should have been deleted from instanceTable")
+	}
+}
+
+// 6. DeleteInst — deleting a nonexistent inst should not panic
+func TestDeleteInst_Nonexistent(t *testing.T) {
+	resetTables()
+	// Should not panic
+	DeleteInst("ns/nonexistent")
+}
+
+// 7. clearStorage — test that it clears the storage map
+func TestClearStorage(t *testing.T) {
+	// Seed storage with some data
+	storage["testkey1"] = []string{"a", "b"}
+	storage["testkey2"] = []string{"c"}
+
+	if len(storage) == 0 {
+		t.Fatal("storage should have entries before clearing")
+	}
+
+	clearStorage()
+
+	if len(storage) != 0 {
+		t.Errorf("expected storage to be empty after clearStorage, got %d entries", len(storage))
+	}
+}
+
+// 8. newSimpleErrorLogger — call the returned function
+func TestNewSimpleErrorLogger_Call(t *testing.T) {
+	logger := logr.Discard()
+	fn := newSimpleErrorLogger(logger)
+
+	// Calling the returned function with a real error should not panic
+	fn(errors.New("test error"), "test message")
+}
+
+// 9. newSimpleInfoLogger — call the returned function
+func TestNewSimpleInfoLogger_Call(t *testing.T) {
+	logger := logr.Discard()
+	fn := newSimpleInfoLogger(logger)
+
+	// Calling the returned function should not panic
+	fn("test info message")
+}
+
+// 10. newSimpleDebugLogger — call the returned function
+func TestNewSimpleDebugLogger_Call(t *testing.T) {
+	logger := logr.Discard()
+	fn := newSimpleDebugLogger(logger)
+
+	// Calling the returned function should not panic
+	fn("test debug message")
+}
+
+// 11. transformVolumes — duplicate volume names across services (already-found branch)
+func TestTransformVolumes_DuplicateVolumeNames(t *testing.T) {
+	// First service adds volume "data" to the sourceMap
+	service1 := helxv1.Service{
+		Name:    "svc1",
+		Image:   "nginx",
+		Command: []string{"nginx"},
+		Volumes: map[string]string{"data": "mydata:/data1"},
+	}
+	sourceMap := make(map[string]*template_io.Volume)
+
+	mounts1, err := transformVolumes(service1, sourceMap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mounts1) != 1 {
+		t.Fatalf("expected 1 mount from service1, got %d", len(mounts1))
+	}
+	if sourceMap["data"] == nil {
+		t.Fatal("expected volume 'data' in sourceMap after first service")
+	}
+	originalClaim := sourceMap["data"].Attr["claim"]
+	if originalClaim != "mydata" {
+		t.Errorf("expected claim=mydata, got %s", originalClaim)
+	}
+
+	// Second service also has volume "data" but with a different claim
+	// The "already found" branch should skip overwriting
+	service2 := helxv1.Service{
+		Name:    "svc2",
+		Image:   "nginx",
+		Command: []string{"nginx"},
+		Volumes: map[string]string{"data": "otherdata:/data2"},
+	}
+
+	mounts2, err := transformVolumes(service2, sourceMap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mounts2) != 1 {
+		t.Fatalf("expected 1 mount from service2, got %d", len(mounts2))
+	}
+
+	// sourceMap["data"] should still point to the original volume (mydata), not otherdata
+	if sourceMap["data"].Attr["claim"] != "mydata" {
+		t.Errorf("expected sourceMap to retain original claim=mydata, got %s", sourceMap["data"].Attr["claim"])
+	}
+
+	// But the mount for service2 should reference the new mount path
+	if mounts2[0].MountPath != "/data2" {
+		t.Errorf("expected mount path /data2, got %s", mounts2[0].MountPath)
+	}
+}
+
+// 12. transformApp with volumes — cover the transformVolumes call from within transformApp
+func TestTransformApp_WithVolumes(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:    "main",
+					Image:   "nginx:latest",
+					Command: []string{"nginx"},
+					Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
+					Volumes: map[string]string{
+						"data": "mydata:/data",
+						"logs": "mylogs:/logs",
+					},
+				},
+			},
+		},
+	}
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+
+	containers, sourceMap, err := transformApp(inst, app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(containers) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(containers))
+	}
+	if len(containers[0].VolumeMounts) != 2 {
+		t.Errorf("expected 2 volume mounts, got %d", len(containers[0].VolumeMounts))
+	}
+	if len(sourceMap) != 2 {
+		t.Errorf("expected 2 volumes in sourceMap, got %d", len(sourceMap))
+	}
+	if sourceMap["data"] == nil || sourceMap["logs"] == nil {
+		t.Error("expected both data and logs volumes in sourceMap")
+	}
+}
+
+// 13. GenerateArtifacts with multiple PVC volumes on one service
+func TestGenerateArtifacts_MultiplePVCs(t *testing.T) {
+	app := makeApp("ns", "myapp", "App", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			Volumes: map[string]string{
+				"data":  "mydata:/data",
+				"cache": "mycache:/cache",
+			},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-multipvc")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts, got nil")
+	}
+	if len(artifacts.PVCs) != 2 {
+		t.Fatalf("expected 2 PVCs, got %d", len(artifacts.PVCs))
+	}
+	if _, ok := artifacts.PVCs["mydata"]; !ok {
+		t.Error("expected PVC with claim 'mydata'")
+	}
+	if _, ok := artifacts.PVCs["mycache"]; !ok {
+		t.Error("expected PVC with claim 'mycache'")
+	}
+	for name, pvc := range artifacts.PVCs {
+		if !strings.Contains(pvc.Render, "PersistentVolumeClaim") {
+			t.Errorf("PVC %s render should contain PersistentVolumeClaim", name)
+		}
+	}
+}
+
+// 14. GetNamespacedName — verify it produces namespace/name
+func TestGetNamespacedName(t *testing.T) {
+	app := makeApp("mynamespace", "myappname", "cls", nil)
+	got := GetNamespacedName(app)
+	expected := "mynamespace/myappname"
+	if got != expected {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+}
+
+// 15. GetNamespacedName with empty namespace
+func TestGetNamespacedName_EmptyNamespace(t *testing.T) {
+	app := makeApp("", "myappname", "cls", nil)
+	got := GetNamespacedName(app)
+	expected := "/myappname"
+	if got != expected {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+}
+
+// 16. GetNamespacedName with user object
+func TestGetNamespacedName_User(t *testing.T) {
+	user := makeUser("testns", "alice", nil)
+	got := GetNamespacedName(user)
+	expected := "testns/alice"
+	if got != expected {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+}
+
+// 17. GetNamespacedName with inst object
+func TestGetNamespacedName_Inst(t *testing.T) {
+	inst := makeInst("testns", "inst1", "myapp", "alice", "uuid-1")
+	got := GetNamespacedName(inst)
+	expected := "testns/inst1"
+	if got != expected {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+}
+
+// 18. GenerateArtifacts with duplicate volume across two services (already-found branch in full pipeline)
+func TestGenerateArtifacts_DuplicateVolumeAcrossServices(t *testing.T) {
+	app := makeApp("ns", "myapp", "App", []helxv1.Service{
+		{
+			Name:    "web",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			Volumes: map[string]string{"shared": "sharedvol:/web-data"},
+		},
+		{
+			Name:    "worker",
+			Image:   "worker:latest",
+			Command: []string{"worker"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 9090}},
+			Volumes: map[string]string{"shared": "sharedvol:/worker-data"},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-dupvol")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts, got nil")
+	}
+	// Only one PVC should be created even though two services reference the same volume name
+	if len(artifacts.PVCs) != 1 {
+		t.Fatalf("expected 1 PVC for duplicate volume name, got %d", len(artifacts.PVCs))
+	}
+	if _, ok := artifacts.PVCs["sharedvol"]; !ok {
+		t.Error("expected PVC with claim 'sharedvol'")
 	}
 }

@@ -2,6 +2,8 @@ package template_io
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 	"text/template"
@@ -464,5 +466,185 @@ func TestRenderDeployment_Labels(t *testing.T) {
 	}
 	if !strings.Contains(result, "helx.renci.org/username") {
 		t.Errorf("expected output to contain 'helx.renci.org/username' label, got:\n%s", result)
+	}
+}
+
+// --- Tests for previously uncovered functions ---
+
+// TestStore_NewKey - store into a map with a new key creates a new slice
+func TestStore_NewKey(t *testing.T) {
+	s := make(map[string][]string)
+	ret := store(s, "key1", "val1")
+	if ret != "val1" {
+		t.Errorf("store returned %q, want %q", ret, "val1")
+	}
+	if len(s["key1"]) != 1 || s["key1"][0] != "val1" {
+		t.Errorf("s[\"key1\"] = %v, want [val1]", s["key1"])
+	}
+}
+
+// TestStore_ExistingKey - store into a map with an existing key appends
+func TestStore_ExistingKey(t *testing.T) {
+	s := make(map[string][]string)
+	store(s, "key1", "val1")
+	store(s, "key1", "val2")
+	if len(s["key1"]) != 2 {
+		t.Fatalf("s[\"key1\"] length = %d, want 2", len(s["key1"]))
+	}
+	if s["key1"][0] != "val1" || s["key1"][1] != "val2" {
+		t.Errorf("s[\"key1\"] = %v, want [val1 val2]", s["key1"])
+	}
+}
+
+// TestStore_MultipleKeys - store values under different keys
+func TestStore_MultipleKeys(t *testing.T) {
+	s := make(map[string][]string)
+	store(s, "a", "1")
+	store(s, "b", "2")
+	store(s, "a", "3")
+	if len(s) != 2 {
+		t.Errorf("expected 2 keys, got %d", len(s))
+	}
+	if len(s["a"]) != 2 {
+		t.Errorf("s[\"a\"] length = %d, want 2", len(s["a"]))
+	}
+	if len(s["b"]) != 1 {
+		t.Errorf("s[\"b\"] length = %d, want 1", len(s["b"]))
+	}
+}
+
+// TestNewInMemoryLoader - verify NewInMemoryLoader returns a usable loader
+func TestNewInMemoryLoader(t *testing.T) {
+	loader := NewInMemoryLoader()
+	if loader == nil {
+		t.Fatal("NewInMemoryLoader returned nil")
+	}
+	if loader.templates == nil {
+		t.Fatal("loader.templates is nil, expected initialized map")
+	}
+	if len(loader.templates) != 0 {
+		t.Errorf("loader.templates length = %d, want 0", len(loader.templates))
+	}
+}
+
+// TestInMemoryLoader_Exists_NotFound - Exists returns false for missing template
+func TestInMemoryLoader_Exists_NotFound(t *testing.T) {
+	loader := NewInMemoryLoader()
+	if loader.Exists("nonexistent") {
+		t.Error("Exists returned true for nonexistent template")
+	}
+}
+
+// TestInMemoryLoader_Exists_Found - Exists returns true for a loaded template
+func TestInMemoryLoader_Exists_Found(t *testing.T) {
+	loader := NewInMemoryLoader()
+	tmpl := template.Must(template.New("test").Parse("hello"))
+	loader.templates["test"] = tmpl
+	if !loader.Exists("test") {
+		t.Error("Exists returned false for existing template")
+	}
+}
+
+// TestInMemoryLoader_Open_NotFound - Open returns error for missing template
+func TestInMemoryLoader_Open_NotFound(t *testing.T) {
+	loader := NewInMemoryLoader()
+	reader, err := loader.Open("missing")
+	if err == nil {
+		t.Fatal("expected error for missing template, got nil")
+	}
+	if reader != nil {
+		t.Errorf("expected nil reader, got %v", reader)
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("error = %q, expected to contain 'not found'", err.Error())
+	}
+}
+
+// TestInMemoryLoader_Open_Found - Open returns reader with template content
+func TestInMemoryLoader_Open_Found(t *testing.T) {
+	loader := NewInMemoryLoader()
+	tmpl := template.Must(template.New("greeting").Parse("hello world"))
+	loader.templates["greeting"] = tmpl
+
+	reader, err := loader.Open("greeting")
+	if err != nil {
+		t.Fatalf("Open error: %v", err)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("ReadAll error: %v", err)
+	}
+	if string(data) != "hello world" {
+		t.Errorf("Open content = %q, want %q", string(data), "hello world")
+	}
+}
+
+// TestBuildConnectionString - verify formatted connection string
+func TestBuildConnectionString(t *testing.T) {
+	result := BuildConnectionString("localhost", "admin", "secret", "mydb")
+	expected := "host=localhost user=admin password=secret dbname=mydb sslmode=disable"
+	if result != expected {
+		t.Errorf("BuildConnectionString = %q, want %q", result, expected)
+	}
+}
+
+// TestBuildConnectionString_SpecialChars - verify with special characters in fields
+func TestBuildConnectionString_SpecialChars(t *testing.T) {
+	result := BuildConnectionString("db.example.com", "user@domain", "p@ss w0rd!", "my-db")
+	expected := "host=db.example.com user=user@domain password=p@ss w0rd! dbname=my-db sslmode=disable"
+	if result != expected {
+		t.Errorf("BuildConnectionString = %q, want %q", result, expected)
+	}
+}
+
+// TestParseTemplates_EmptyDirectory - empty dir returns nil, nil, nil
+func TestParseTemplates_EmptyDirectory(t *testing.T) {
+	dir, err := os.MkdirTemp("", "empty-templates-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	tmpl, s, err := ParseTemplates(dir, nil)
+	if err != nil {
+		t.Errorf("ParseTemplates error = %v, want nil", err)
+	}
+	if tmpl != nil {
+		t.Errorf("expected nil template, got %v", tmpl)
+	}
+	if s != nil {
+		t.Errorf("expected nil storage, got %v", s)
+	}
+}
+
+// TestRenderGoTemplate_BadTemplateName - error case for nonexistent template name
+func TestRenderGoTemplate_BadTemplateName(t *testing.T) {
+	ensureTemplates(t)
+
+	vars := map[string]interface{}{}
+	_, err := RenderGoTemplate(testTemplate, "nonexistent-template-name", vars)
+	if err == nil {
+		t.Error("expected error for nonexistent template name, got nil")
+	}
+}
+
+// TestReRender_BadSyntax - error case for malformed template syntax
+func TestReRender_BadSyntax(t *testing.T) {
+	input := "{{ .broken"
+	ctx := map[string]interface{}{}
+	_, err := ReRender(input, ctx)
+	if err == nil {
+		t.Error("expected error for bad template syntax, got nil")
+	}
+}
+
+// TestReRender_ExecutionError - error during template execution (missing map key with missingkey=error)
+func TestReRender_ExecutionError(t *testing.T) {
+	// Use an action that causes an execution error: calling a nonexistent function
+	input := "{{ call .noFunc }}"
+	ctx := map[string]interface{}{}
+	_, err := ReRender(input, ctx)
+	if err == nil {
+		t.Error("expected error for execution failure, got nil")
 	}
 }
