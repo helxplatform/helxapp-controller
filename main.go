@@ -66,12 +66,14 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var watchNamespace string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&watchNamespace, "namespace", "", "Limit watches to a specific namespace. If empty, watches all namespaces (requires cluster-scoped RBAC).")
 	opts := zap.Options{
 		Development: true,
 		Level:       zapcore.DebugLevel,
@@ -83,14 +85,26 @@ func main() {
 
 	ctrl.SetLogger(mainLog)
 
+	// Allow WATCH_NAMESPACE env var to override the flag (convenient for Helm/kustomize).
+	if ns := os.Getenv("WATCH_NAMESPACE"); ns != "" && watchNamespace == "" {
+		watchNamespace = ns
+	}
+
 	if err := helxapp_operations.Initalize(mainLog); err != nil {
 		setupLog.Error(err, "Cannot initialize operations")
 		os.Exit(1)
 	}
 
+	if watchNamespace != "" {
+		setupLog.Info("watching namespace", "namespace", watchNamespace)
+	} else {
+		setupLog.Info("watching all namespaces (cluster-scoped)")
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
+		Namespace:              watchNamespace,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,

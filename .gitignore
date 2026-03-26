@@ -10,6 +10,9 @@
 testbin/*
 Dockerfile.cross
 
+# Build output (make build)
+bin/manager
+
 # Test binary, build with `go test -c`
 *.test
 

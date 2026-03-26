@@ -88,7 +88,7 @@ func TestE2E_DeleteInst_WorkloadsRemoved(t *testing.T) {
 	user := newUser(userName)
 	inst := newInst(instName, appName, userName)
 
-	registerCleanup(t, app, user) // inst will be explicitly deleted
+	registerCleanup(t, inst, app, user)
 	createObj(t, app)
 	createObj(t, user)
 	createObj(t, inst)
@@ -113,7 +113,7 @@ func TestE2E_DeleteApp_CascadesToInstances(t *testing.T) {
 	user := newUser(userName)
 	inst := newInst(instName, appName, userName)
 
-	registerCleanup(t, inst, user) // app will be explicitly deleted
+	registerCleanup(t, inst, app, user)
 	createObj(t, app)
 	createObj(t, user)
 	createObj(t, inst)
@@ -138,7 +138,7 @@ func TestE2E_DeleteUser_CascadesToInstances(t *testing.T) {
 	user := newUser(userName)
 	inst := newInst(instName, appName, userName)
 
-	registerCleanup(t, inst, app) // user will be explicitly deleted
+	registerCleanup(t, inst, app, user)
 	createObj(t, app)
 	createObj(t, user)
 	createObj(t, inst)
@@ -616,7 +616,7 @@ func TestE2E_RetainPVC_SurvivesInstDeletion(t *testing.T) {
 	pvcObj := &corev1.PersistentVolumeClaim{}
 	pvcObj.Name = claimName
 	pvcObj.Namespace = testNS
-	registerCleanup(t, app, user, pvcObj)
+	registerCleanup(t, inst, app, user, pvcObj)
 
 	createObj(t, app)
 	createObj(t, user)

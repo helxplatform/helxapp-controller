@@ -41,31 +41,6 @@ rules:
   - helx.renci.org
   resources:
   - helxapps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - helx.renci.org
-  resources:
-  - helxapps/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - helx.renci.org
-  resources:
-  - helxapps/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - helx.renci.org
-  resources:
   - helxinsts
   verbs:
   - create
@@ -78,12 +53,14 @@ rules:
 - apiGroups:
   - helx.renci.org
   resources:
+  - helxapps/finalizers
   - helxinsts/finalizers
   verbs:
   - update
 - apiGroups:
   - helx.renci.org
   resources:
+  - helxapps/status
   - helxinsts/status
   verbs:
   - get

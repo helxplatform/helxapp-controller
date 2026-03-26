@@ -175,13 +175,55 @@ func updateObj(t *testing.T, obj client.Object) {
 }
 
 // registerCleanup schedules deletion of all objects at test end.
+// It also cleans up any Deployments and Services created by the controller
+// for HelxInst objects in the list (looked up by UUID label).
 func registerCleanup(t *testing.T, objs ...client.Object) {
 	t.Helper()
 	t.Cleanup(func() {
+		ctx := context.Background()
+
+		// First, collect UUIDs from any HelxInst objects so we can clean up workloads.
+		for _, obj := range objs {
+			if inst, ok := obj.(*helxv1.HelxInst); ok {
+				// Re-fetch to get the status UUID.
+				fresh := &helxv1.HelxInst{}
+				if err := k8sClient.Get(ctx, types.NamespacedName{Name: inst.Name, Namespace: testNS}, fresh); err == nil && fresh.Status.UUID != "" {
+					cleanupWorkloads(t, fresh.Status.UUID)
+				}
+			}
+		}
+
+		// Then delete the CRD objects themselves.
 		for _, obj := range objs {
 			deleteObj(t, obj)
 		}
 	})
+}
+
+// cleanupWorkloads deletes Deployments and Services with label helx.renci.org/id=<uuid>.
+func cleanupWorkloads(t *testing.T, uuid string) {
+	t.Helper()
+	ctx := context.Background()
+	labels := client.MatchingLabels{"helx.renci.org/id": uuid}
+	ns := client.InNamespace(testNS)
+
+	deployList := &appsv1.DeploymentList{}
+	if err := k8sClient.List(ctx, deployList, ns, labels); err == nil {
+		for i := range deployList.Items {
+			if err := k8sClient.Delete(ctx, &deployList.Items[i], client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
+				t.Logf("cleanup deploy %s: %v", deployList.Items[i].Name, err)
+			}
+		}
+	}
+
+	svcList := &corev1.ServiceList{}
+	if err := k8sClient.List(ctx, svcList, ns, labels); err == nil {
+		for i := range svcList.Items {
+			if err := k8sClient.Delete(ctx, &svcList.Items[i]); err != nil && !apierrors.IsNotFound(err) {
+				t.Logf("cleanup svc %s: %v", svcList.Items[i].Name, err)
+			}
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
