@@ -28,6 +28,7 @@ type HelxInstSpec struct {
 	AppName         string               `json:"appName"`
 	SecurityContext *SecurityContext     `json:"securityContext,omitempty"`
 	Resources       map[string]Resources `json:"resources,omitempty"`
+	Environment     map[string]string    `json:"environment,omitempty"`
 	UserName        string               `json:"userName"`
 }
 

@@ -1505,3 +1505,124 @@ func TestGenerateArtifacts_DuplicateVolumeAcrossServices(t *testing.T) {
 		t.Error("expected PVC with claim 'sharedvol'")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// mergeEnvironment tests
+// ---------------------------------------------------------------------------
+
+func TestMergeEnvironment_BothNil(t *testing.T) {
+	result := mergeEnvironment(nil, nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestMergeEnvironment_AppOnly(t *testing.T) {
+	app := map[string]string{"FOO": "bar"}
+	result := mergeEnvironment(app, nil)
+	if result["FOO"] != "bar" {
+		t.Errorf("expected FOO=bar, got %s", result["FOO"])
+	}
+}
+
+func TestMergeEnvironment_InstOnly(t *testing.T) {
+	inst := map[string]string{"BAZ": "qux"}
+	result := mergeEnvironment(nil, inst)
+	if result["BAZ"] != "qux" {
+		t.Errorf("expected BAZ=qux, got %s", result["BAZ"])
+	}
+}
+
+func TestMergeEnvironment_Disjoint(t *testing.T) {
+	app := map[string]string{"FOO": "bar"}
+	inst := map[string]string{"BAZ": "qux"}
+	result := mergeEnvironment(app, inst)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(result))
+	}
+	if result["FOO"] != "bar" || result["BAZ"] != "qux" {
+		t.Errorf("unexpected result: %v", result)
+	}
+}
+
+func TestMergeEnvironment_InstOverridesApp(t *testing.T) {
+	app := map[string]string{"FOO": "from-app", "SHARED": "app-value"}
+	inst := map[string]string{"SHARED": "inst-value", "NEW": "inst-only"}
+	result := mergeEnvironment(app, inst)
+	if result["FOO"] != "from-app" {
+		t.Errorf("expected FOO=from-app, got %s", result["FOO"])
+	}
+	if result["SHARED"] != "inst-value" {
+		t.Errorf("expected SHARED=inst-value (inst takes precedence), got %s", result["SHARED"])
+	}
+	if result["NEW"] != "inst-only" {
+		t.Errorf("expected NEW=inst-only, got %s", result["NEW"])
+	}
+}
+
+func TestTransformApp_InstanceEnvMerged(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:        "main",
+					Image:       "nginx",
+					Command:     []string{"nginx"},
+					Ports:       []helxv1.PortMap{{ContainerPort: 80}},
+					Environment: map[string]string{"APP_VAR": "app-val", "SHARED": "from-app"},
+				},
+			},
+		},
+	}
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	inst.Spec.Environment = map[string]string{"INST_VAR": "inst-val", "SHARED": "from-inst"}
+
+	containers, _, err := transformApp(inst, app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(containers) != 1 {
+		t.Fatalf("expected 1 container, got %d", len(containers))
+	}
+	env := containers[0].Environment
+	if env["APP_VAR"] != "app-val" {
+		t.Errorf("expected APP_VAR=app-val, got %s", env["APP_VAR"])
+	}
+	if env["INST_VAR"] != "inst-val" {
+		t.Errorf("expected INST_VAR=inst-val, got %s", env["INST_VAR"])
+	}
+	if env["SHARED"] != "from-inst" {
+		t.Errorf("expected SHARED=from-inst (inst precedence), got %s", env["SHARED"])
+	}
+}
+
+func TestGenerateArtifacts_InstanceEnvInDeployment(t *testing.T) {
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:        "main",
+			Image:       "nginx",
+			Command:     []string{"nginx"},
+			Ports:       []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			Environment: map[string]string{"APP_LEVEL": "hello"},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-env")
+	inst.Spec.Environment = map[string]string{"INST_LEVEL": "world"}
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+	if !strings.Contains(render, "APP_LEVEL") {
+		t.Error("deployment should contain APP_LEVEL env var")
+	}
+	if !strings.Contains(render, "INST_LEVEL") {
+		t.Error("deployment should contain INST_LEVEL env var from instance")
+	}
+}

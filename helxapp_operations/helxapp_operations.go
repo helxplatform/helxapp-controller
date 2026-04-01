@@ -461,6 +461,22 @@ func transFormImage(imageString string) template_io.Image {
 	}
 }
 
+// mergeEnvironment merges app-level and instance-level environment variables.
+// Instance values take precedence over app values when the same key exists in both.
+func mergeEnvironment(appEnv, instEnv map[string]string) map[string]string {
+	if len(appEnv) == 0 && len(instEnv) == 0 {
+		return nil
+	}
+	merged := make(map[string]string, len(appEnv)+len(instEnv))
+	for k, v := range appEnv {
+		merged[k] = v
+	}
+	for k, v := range instEnv {
+		merged[k] = v
+	}
+	return merged
+}
+
 // ServiceProcessor processes the services from the application spec and returns containers.
 func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.Container, map[string]*template_io.Volume, error) {
 	containers := []template_io.Container{}
@@ -475,10 +491,11 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.
 		}
 
 		resources := transformResources(service.Name, instance.Spec.Resources)
+		env := mergeEnvironment(service.Environment, instance.Spec.Environment)
 		container := template_io.Container{
 			Name:            service.Name,
 			Command:         service.Command[:],
-			Environment:     service.Environment,
+			Environment:     env,
 			HasService:      hasService,
 			Image:           transFormImage(service.Image),
 			Ports:           ports,

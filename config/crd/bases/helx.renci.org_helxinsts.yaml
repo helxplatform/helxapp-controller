@@ -41,6 +41,10 @@ spec:
             properties:
               appName:
                 type: string
+              environment:
+                additionalProperties:
+                  type: string
+                type: object
               resources:
                 additionalProperties:
                   description: ServicePort represents a single port for a service

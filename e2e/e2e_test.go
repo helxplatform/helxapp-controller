@@ -829,6 +829,66 @@ func TestE2E_MultipleInstances_SeparateDeployments(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// 23: Instance Environment Variables
+// ---------------------------------------------------------------------------
+
+func TestE2E_InstanceEnvMergedIntoDeployment(t *testing.T) {
+	s := suffix()
+	appName := "app-" + s
+	userName := "user-" + s
+	instName := "inst-" + s
+
+	svc := helxv1.Service{
+		Name:    "main",
+		Image:   "nginx:latest",
+		Command: []string{"nginx", "-g", "daemon off;"},
+		Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
+		Environment: map[string]string{
+			"APP_VAR":    "from-app",
+			"SHARED_VAR": "app-value",
+		},
+	}
+	app := newApp(appName, []helxv1.Service{svc})
+	user := newUser(userName)
+	inst := newInst(instName, appName, userName)
+	inst.Spec.Environment = map[string]string{
+		"INST_VAR":   "from-inst",
+		"SHARED_VAR": "inst-value",
+	}
+
+	registerCleanup(t, inst, app, user)
+	createObj(t, app)
+	createObj(t, user)
+	createObj(t, inst)
+
+	uuid := waitForInstUUID(t, instName)
+	deploy := waitForDeployment(t, uuid)
+
+	containers := deploy.Spec.Template.Spec.Containers
+	if len(containers) == 0 {
+		t.Fatal("expected at least one container")
+	}
+
+	envMap := make(map[string]string)
+	for _, e := range containers[0].Env {
+		envMap[e.Name] = e.Value
+	}
+
+	// App-level var should be present
+	if envMap["APP_VAR"] != "from-app" {
+		t.Errorf("expected APP_VAR=from-app, got %s", envMap["APP_VAR"])
+	}
+	// Instance-level var should be present
+	if envMap["INST_VAR"] != "from-inst" {
+		t.Errorf("expected INST_VAR=from-inst, got %s", envMap["INST_VAR"])
+	}
+	// Overlapping var should have instance value (instance takes precedence)
+	if envMap["SHARED_VAR"] != "inst-value" {
+		t.Errorf("expected SHARED_VAR=inst-value (inst precedence), got %s", envMap["SHARED_VAR"])
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers for update tests
 // ---------------------------------------------------------------------------
 
