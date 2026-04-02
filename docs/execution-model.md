@@ -44,6 +44,7 @@ Key fields (`HelxInstSpec`):
 |-------|---------|
 | `appName` | Name (or `namespace/name`) of the `HelxApp` to instantiate |
 | `userName` | Name (or `namespace/name`) of the `HelxUser` who owns this instance |
+| `environment` | Instance-level env vars (`map[string]string`); merged with app-level env vars — instance values take precedence on overlap |
 | `securityContext` | Instance-level security context; overrides user-fetched context when present |
 | `resources` | Map of `serviceName → {requests, limits}` — per-container resource requests/limits |
 
@@ -144,6 +145,7 @@ Both must be non-nil; otherwise `GenerateArtifacts` returns `(nil, nil)`.
 `transformApp(instance, app)` iterates over `app.Spec.Services` and builds a slice of `template_io.Container` values:
 
 - **Ports**: each `PortMap` is copied; `hasService = true` when `port != 0`.
+- **Environment**: app-level env vars (`service.Environment`) are merged with instance-level env vars (`instance.Spec.Environment`) via `mergeEnvironment()`. Instance values take precedence when the same key exists in both. This allows HelxApp to define class-wide defaults while HelxInst provides per-instance overrides.
 - **Volumes**: each `volumeId → volumeStr` entry is parsed by the Volume DSL (see below) into a `Volume` (pod-level source) and a `VolumeMount` (container-level path).
 - **Resources**: `instance.Spec.Resources[serviceName]` provides actual `Requests` and `Limits`.
 - **Image**: split at first comma — the image reference, then `key[=value]` option flags (e.g. `Always` sets `imagePullPolicy: Always`).

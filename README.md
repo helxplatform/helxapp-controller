@@ -77,6 +77,9 @@ metadata:
 spec:
   appName: jupyterlab
   userName: jeffw
+  environment:
+    WORKSPACE_ID: "ws-42"
+    NB_PREFIX: "/custom"
   resources:
     main:
       request: { cpu: "2", memory: "1G" }
@@ -90,6 +93,7 @@ spec:
 |-------|-------------|
 | `appName` | Name (or `namespace/name`) of the HelxApp to instantiate |
 | `userName` | Name (or `namespace/name`) of the HelxUser |
+| `environment` | Instance-level env vars; merged with app-level vars (instance takes precedence on overlap) |
 | `resources` | Map of service name to `{request, limit}` resource specifications |
 | `securityContext` | Optional override; takes highest priority (see [Security Context Resolution](#security-context-resolution)) |
 
@@ -468,7 +472,8 @@ in API group helx.renci.org/v1.
 
 ### CRDs
 - HelxApp: application template (images, ports, env, volumes, security context)
-- HelxInst: per-user instance request referencing an app + user; triggers workload creation
+- HelxInst: per-user instance request referencing an app + user; triggers workload creation.
+  Has its own environment map — merged with app-level env (instance wins on overlap).
 - HelxUser: user record; optional userHandle URL for security context
 
 ### Core behavior

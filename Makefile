@@ -62,6 +62,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 e2e: ## Run e2e tests against a live cluster (requires deployed controller).
 	cd e2e && go test -v -count=1 -timeout 30m ./...
 
+.PHONY: clean-tools
+clean-tools: ## Remove cached build tools and envtest binaries (fixes cross-platform issues).
+	rm -rf $(LOCALBIN)
+
 ##@ Build
 
 .PHONY: build
