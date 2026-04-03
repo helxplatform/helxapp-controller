@@ -51,7 +51,7 @@ volumeMounts:
   {{- range $volumeMount := .VolumeMounts }}
   - name: "{{ $volumeMount.Name }}"
     mountPath: "{{ $volumeMount.MountPath }}"
-    {{- if ne $volumeMount.SubPath "" -}}
+    {{- if ne $volumeMount.SubPath "" }}
     subPath: "{{ $volumeMount.SubPath }}"
     {{- end }}
     readOnly: {{ $volumeMount.ReadOnly }}

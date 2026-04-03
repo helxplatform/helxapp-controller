@@ -39,10 +39,16 @@ spec:
           spec:
             description: HelxUserSpec defines the desired state of HelxUser
             properties:
+              environment:
+                additionalProperties:
+                  type: string
+                type: object
               userHandle:
-                description: Foo is an example field of HelxUser. Edit helxuser_types.go
-                  to remove/update
                 type: string
+              volumes:
+                additionalProperties:
+                  type: string
+                type: object
             type: object
           status:
             description: HelxUserStatus defines the observed state of HelxUser

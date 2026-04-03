@@ -1,0 +1,15 @@
+apiVersion: helx.renci.org/v1
+kind: HelxInst
+metadata:
+  name: filebrowser1
+spec:
+  appName: "filebrowser1"
+  userName: "jeffw"
+  resources:
+    jupyterlab:
+      request:
+        cpu: "1"
+        memory: "1G"
+      limit:
+        cpu: "1"
+        memory: "1G"

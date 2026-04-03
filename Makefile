@@ -64,7 +64,7 @@ e2e: ## Run e2e tests against a live cluster (requires deployed controller).
 
 .PHONY: clean-tools
 clean-tools: ## Remove cached build tools and envtest binaries (fixes cross-platform issues).
-	rm -rf $(LOCALBIN)
+	chmod -R u+w $(LOCALBIN) 2>/dev/null; rm -rf $(LOCALBIN)
 
 ##@ Build
 

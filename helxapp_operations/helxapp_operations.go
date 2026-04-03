@@ -478,9 +478,25 @@ func mergeEnvironment(appEnv, instEnv map[string]string) map[string]string {
 }
 
 // ServiceProcessor processes the services from the application spec and returns containers.
-func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.Container, map[string]*template_io.Volume, error) {
+// Environment merge precedence: HelxApp service env < HelxUser env < HelxInst env.
+// Volumes from HelxUser are added to every container alongside the per-service app volumes.
+func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp, user helxv1.HelxUser) ([]template_io.Container, map[string]*template_io.Volume, error) {
 	containers := []template_io.Container{}
 	sourceMap := make(map[string]*template_io.Volume)
+
+	// Parse user-level volumes once (shared across all containers).
+	var userVolumeMounts []*template_io.VolumeMount
+	for volumeName, volumeStr := range user.Spec.Volumes {
+		templateVolume, templateVolumeMount, err := processVolume(volumeName, volumeStr)
+		if err != nil {
+			simpleErrorLogger(err, fmt.Sprintf("parse user volume %s failed", volumeName))
+			continue
+		}
+		if _, found := sourceMap[volumeName]; !found {
+			sourceMap[volumeName] = templateVolume
+		}
+		userVolumeMounts = append(userVolumeMounts, templateVolumeMount)
+	}
 
 	for _, service := range app.Spec.Services {
 		ports, hasService := transformPorts(service.Ports)
@@ -490,8 +506,13 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp) ([]template_io.
 			continue
 		}
 
+		// Append user-level volume mounts to each container.
+		volumeList = append(volumeList, userVolumeMounts...)
+
 		resources := transformResources(service.Name, instance.Spec.Resources)
-		env := mergeEnvironment(service.Environment, instance.Spec.Environment)
+		// Three-way merge: app < user < inst.
+		env := mergeEnvironment(service.Environment, user.Spec.Environment)
+		env = mergeEnvironment(env, instance.Spec.Environment)
 		container := template_io.Container{
 			Name:            service.Name,
 			Command:         service.Command[:],
@@ -554,7 +575,7 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 	user := GetUser(userName)
 
 	if app != nil && user != nil {
-		containers, volumeSourceMap, error := transformApp(instance, *app)
+		containers, volumeSourceMap, error := transformApp(instance, *app, *user)
 		if error == nil && len(containers) >= 1 {
 			volumes := make(map[string]template_io.Volume)
 

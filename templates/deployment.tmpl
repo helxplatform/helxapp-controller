@@ -7,7 +7,7 @@ metadata:
     "helx.renci.org/id": {{ .system.UUID }}
     "helx.renci.org/app-name": {{ .system.AppName }}
     "helx.renci.org/username": {{ .system.UserName }}
-  name: {{ .system.InstanceName }}-{{ .system.UUID }}
+  name: {{ .system.AppName }}-{{ .system.UUID }}
 spec:
   replicas: 1
   selector:

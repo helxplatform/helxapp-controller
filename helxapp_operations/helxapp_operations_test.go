@@ -591,7 +591,7 @@ func TestTransformApp_SingleService(t *testing.T) {
 	}
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 
-	containers, sourceMap, err := transformApp(inst, app)
+	containers, sourceMap, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -623,7 +623,7 @@ func TestTransformApp_MultiService(t *testing.T) {
 	}
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 
-	containers, _, err := transformApp(inst, app)
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,7 +651,7 @@ func TestTransformApp_WithEnvironment(t *testing.T) {
 	}
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 
-	containers, _, err := transformApp(inst, app)
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,7 +678,7 @@ func TestTransformApp_WithCommand(t *testing.T) {
 	}
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 
-	containers, _, err := transformApp(inst, app)
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1369,7 +1369,7 @@ func TestTransformApp_WithVolumes(t *testing.T) {
 	}
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 
-	containers, sourceMap, err := transformApp(inst, app)
+	containers, sourceMap, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1577,7 +1577,7 @@ func TestTransformApp_InstanceEnvMerged(t *testing.T) {
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
 	inst.Spec.Environment = map[string]string{"INST_VAR": "inst-val", "SHARED": "from-inst"}
 
-	containers, _, err := transformApp(inst, app)
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "testuser", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1624,5 +1624,199 @@ func TestGenerateArtifacts_InstanceEnvInDeployment(t *testing.T) {
 	}
 	if !strings.Contains(render, "INST_LEVEL") {
 		t.Error("deployment should contain INST_LEVEL env var from instance")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// User environment and volume merge tests
+// ---------------------------------------------------------------------------
+
+func TestTransformApp_UserEnvMerged(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:        "main",
+					Image:       "nginx",
+					Command:     []string{"nginx"},
+					Ports:       []helxv1.PortMap{{ContainerPort: 80}},
+					Environment: map[string]string{"APP_VAR": "app", "SHARED": "from-app"},
+				},
+			},
+		},
+	}
+	user := helxv1.HelxUser{}
+	user.Name = "alice"
+	user.Namespace = "ns"
+	user.Spec.Environment = map[string]string{"USER_VAR": "user", "SHARED": "from-user"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+
+	containers, _, err := transformApp(inst, app, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := containers[0].Environment
+	if env["APP_VAR"] != "app" {
+		t.Errorf("expected APP_VAR=app, got %s", env["APP_VAR"])
+	}
+	if env["USER_VAR"] != "user" {
+		t.Errorf("expected USER_VAR=user, got %s", env["USER_VAR"])
+	}
+	// User overrides app
+	if env["SHARED"] != "from-user" {
+		t.Errorf("expected SHARED=from-user (user > app), got %s", env["SHARED"])
+	}
+}
+
+func TestTransformApp_ThreeWayEnvPrecedence(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:        "main",
+					Image:       "nginx",
+					Command:     []string{"nginx"},
+					Ports:       []helxv1.PortMap{{ContainerPort: 80}},
+					Environment: map[string]string{"KEY": "from-app"},
+				},
+			},
+		},
+	}
+	user := helxv1.HelxUser{}
+	user.Name = "alice"
+	user.Namespace = "ns"
+	user.Spec.Environment = map[string]string{"KEY": "from-user"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	inst.Spec.Environment = map[string]string{"KEY": "from-inst"}
+
+	containers, _, err := transformApp(inst, app, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// inst > user > app
+	if containers[0].Environment["KEY"] != "from-inst" {
+		t.Errorf("expected KEY=from-inst (inst wins), got %s", containers[0].Environment["KEY"])
+	}
+}
+
+func TestTransformApp_UserVolumes(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:    "main",
+					Image:   "nginx",
+					Command: []string{"nginx"},
+					Ports:   []helxv1.PortMap{{ContainerPort: 80}},
+					Volumes: map[string]string{"appvol": "app-data:/data"},
+				},
+			},
+		},
+	}
+	user := helxv1.HelxUser{}
+	user.Name = "alice"
+	user.Namespace = "ns"
+	user.Spec.Volumes = map[string]string{"uservol": "user-home:/home/alice"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+
+	containers, sourceMap, err := transformApp(inst, app, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Both volumes should be in the source map
+	if _, ok := sourceMap["appvol"]; !ok {
+		t.Error("expected appvol in sourceMap")
+	}
+	if _, ok := sourceMap["uservol"]; !ok {
+		t.Error("expected uservol in sourceMap")
+	}
+
+	// Container should have mounts for both
+	mounts := containers[0].VolumeMounts
+	mountNames := make(map[string]bool)
+	for _, m := range mounts {
+		mountNames[m.Name] = true
+	}
+	if !mountNames["appvol"] {
+		t.Error("expected appvol mount on container")
+	}
+	if !mountNames["uservol"] {
+		t.Error("expected uservol mount on container")
+	}
+}
+
+func TestTransformApp_UserVolumesOnAllContainers(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{Name: "web", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80}}},
+				{Name: "sidecar", Image: "busybox", Command: []string{"sh"}, Ports: []helxv1.PortMap{{ContainerPort: 9090}}},
+			},
+		},
+	}
+	user := helxv1.HelxUser{}
+	user.Name = "alice"
+	user.Namespace = "ns"
+	user.Spec.Volumes = map[string]string{"shared": "shared-data:/shared"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+
+	containers, _, err := transformApp(inst, app, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(containers) != 2 {
+		t.Fatalf("expected 2 containers, got %d", len(containers))
+	}
+	for _, c := range containers {
+		found := false
+		for _, m := range c.VolumeMounts {
+			if m.Name == "shared" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected user volume 'shared' on container %s", c.Name)
+		}
+	}
+}
+
+func TestGenerateArtifacts_UserEnvAndVolumes(t *testing.T) {
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	user.Spec.Environment = map[string]string{"USER_ENV": "from-user"}
+	user.Spec.Volumes = map[string]string{"uhome": "alice-home:/home/alice"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-userenv")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+	if !strings.Contains(render, "USER_ENV") {
+		t.Error("deployment should contain USER_ENV from user")
+	}
+	if !strings.Contains(render, "alice-home") {
+		t.Error("deployment should reference user volume claim alice-home")
+	}
+	// User PVC should be created
+	if _, ok := artifacts.PVCs["alice-home"]; !ok {
+		t.Error("expected PVC for user volume alice-home")
 	}
 }

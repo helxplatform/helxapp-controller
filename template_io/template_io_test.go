@@ -648,3 +648,61 @@ func TestReRender_ExecutionError(t *testing.T) {
 		t.Error("expected error for execution failure, got nil")
 	}
 }
+
+// TestRenderDeployment_SubPathFormatting - Verify subPath renders on its own line
+func TestRenderDeployment_SubPathFormatting(t *testing.T) {
+	ensureTemplates(t)
+
+	system := System{
+		AppName:      "test-app",
+		AppClassName: "test-class",
+		InstanceName: "test-instance",
+		UserName:     "testuser",
+		UUID:         "test-uuid-subpath",
+		Host:         "test-host",
+		SecurityContext: &SecurityContext{
+			RunAsUser:  "1000",
+			RunAsGroup: "1000",
+			FSGroup:    "1000",
+		},
+		Containers: []Container{
+			{
+				Name:  "main",
+				Image: Image{ImageName: "nginx:latest", Attr: map[string]string{}},
+				VolumeMounts: []*VolumeMount{
+					{
+						Name:      "data",
+						MountPath: "/data",
+						SubPath:   "mysubdir",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
+		Volumes: map[string]Volume{
+			"data": {
+				Name:   "data",
+				Scheme: "pvc",
+				Attr:   map[string]string{"claim": "data-pvc"},
+			},
+		},
+	}
+
+	vars := map[string]interface{}{
+		"system": system,
+	}
+	result, err := RenderGoTemplate(testTemplate, "deployment", vars)
+	if err != nil {
+		t.Fatalf("RenderGoTemplate error: %v", err)
+	}
+	// mountPath and subPath must be on separate lines
+	if strings.Contains(result, `mountPath: "/data"subPath`) {
+		t.Errorf("mountPath and subPath are on the same line (missing newline):\n%s", result)
+	}
+	if !strings.Contains(result, "subPath:") {
+		t.Errorf("expected subPath in output, got:\n%s", result)
+	}
+	if !strings.Contains(result, "mysubdir") {
+		t.Errorf("expected 'mysubdir' in output, got:\n%s", result)
+	}
+}

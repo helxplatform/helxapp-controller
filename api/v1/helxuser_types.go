@@ -25,11 +25,9 @@ import (
 
 // HelxUserSpec defines the desired state of HelxUser
 type HelxUserSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of HelxUser. Edit helxuser_types.go to remove/update
-	UserHandle *string `json:"userHandle,omitempty"`
+	UserHandle  *string           `json:"userHandle,omitempty"`
+	Environment map[string]string `json:"environment,omitempty"`
+	Volumes     map[string]string `json:"volumes,omitempty"`
 }
 
 // HelxUserStatus defines the observed state of HelxUser

@@ -1,0 +1,19 @@
+apiVersion: helx.renci.org/v1
+kind: HelxApp
+metadata:
+  name: filebrowser1
+  namespace: jeffw
+spec:
+  appClassName: Filebrowser
+  services:
+    - name: main
+      command:
+        - /bin/sh
+        - -c
+        - /filebrowser --noauth --root="/home" --address=0.0.0.0 --database=/home/{{ .system.UserName}}/.filebrowser/filebrowser.db
+      image: wateim/filebrowser:jeffw,Always
+      ports:
+        - containerPort: 80
+          port: 8080
+      volumes:
+        home: "{{ .system.UserName }}-home:/home/{{ .system.UserName }},rwx,retain"

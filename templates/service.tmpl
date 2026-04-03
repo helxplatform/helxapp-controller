@@ -6,7 +6,7 @@ metadata:
   labels:
     executor: helxapp-controller
     "helx.renci.org/id": {{ .system.UUID }}
-  name: {{ .system.InstanceName }}-{{ .system.UUID }}
+  name: {{ .system.AppName }}-{{ .system.UUID }}
 spec:
   type: ClusterIP
   selector:

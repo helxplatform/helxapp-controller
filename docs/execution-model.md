@@ -44,7 +44,7 @@ Key fields (`HelxInstSpec`):
 |-------|---------|
 | `appName` | Name (or `namespace/name`) of the `HelxApp` to instantiate |
 | `userName` | Name (or `namespace/name`) of the `HelxUser` who owns this instance |
-| `environment` | Instance-level env vars (`map[string]string`); merged with app-level env vars — instance values take precedence on overlap |
+| `environment` | Instance-level env vars (`map[string]string`); highest precedence in the three-way merge (app < user < inst) |
 | `securityContext` | Instance-level security context; overrides user-fetched context when present |
 | `resources` | Map of `serviceName → {requests, limits}` — per-container resource requests/limits |
 
@@ -57,11 +57,13 @@ Status:
 
 ### HelxUser — the user record
 
-A `HelxUser` represents a platform user. Its `userHandle` is a URL that the controller can call to obtain security context information (uid/gid/fsGroup) for the pod.
+A `HelxUser` represents a platform user. It can carry user-level environment variables and volumes that apply across all instances for that user, as well as a `userHandle` URL for security context discovery.
 
 | Field | Purpose |
 |-------|---------|
 | `userHandle` | Optional URL; the controller performs an HTTP GET and parses the JSON response for `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups` |
+| `environment` | User-level env vars (`map[string]string`); merged between app-level and instance-level (app < user < inst precedence) |
+| `volumes` | User-level volumes (same DSL as HelxApp service volumes); parsed and mounted on every container in the deployment |
 
 ---
 
@@ -145,8 +147,8 @@ Both must be non-nil; otherwise `GenerateArtifacts` returns `(nil, nil)`.
 `transformApp(instance, app)` iterates over `app.Spec.Services` and builds a slice of `template_io.Container` values:
 
 - **Ports**: each `PortMap` is copied; `hasService = true` when `port != 0`.
-- **Environment**: app-level env vars (`service.Environment`) are merged with instance-level env vars (`instance.Spec.Environment`) via `mergeEnvironment()`. Instance values take precedence when the same key exists in both. This allows HelxApp to define class-wide defaults while HelxInst provides per-instance overrides.
-- **Volumes**: each `volumeId → volumeStr` entry is parsed by the Volume DSL (see below) into a `Volume` (pod-level source) and a `VolumeMount` (container-level path).
+- **Environment**: three-way merge via `mergeEnvironment()` — app-level (`service.Environment`), then user-level (`user.Spec.Environment`), then instance-level (`instance.Spec.Environment`). Each layer overrides the previous on key collisions. This allows HelxApp to define class-wide defaults, HelxUser to set user-specific values, and HelxInst to provide per-instance overrides.
+- **Volumes**: per-service app volumes (`service.Volumes`) are parsed by the Volume DSL (see below) into a `Volume` (pod-level source) and a `VolumeMount` (container-level path). User-level volumes (`user.Spec.Volumes`) are parsed once and appended to every container's mount list.
 - **Resources**: `instance.Spec.Resources[serviceName]` provides actual `Requests` and `Limits`.
 - **Image**: split at first comma — the image reference, then `key[=value]` option flags (e.g. `Always` sets `imagePullPolicy: Always`).
 - **Security context**: copied from the `service.SecurityContext` field.

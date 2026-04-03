@@ -889,6 +889,92 @@ func TestE2E_InstanceEnvMergedIntoDeployment(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// 24: User Environment and Volume Merge
+// ---------------------------------------------------------------------------
+
+func TestE2E_UserEnvAndVolumeMerged(t *testing.T) {
+	s := suffix()
+	appName := "app-" + s
+	userName := "user-" + s
+	instName := "inst-" + s
+	claimName := "uhome-" + s
+
+	svc := helxv1.Service{
+		Name:    "main",
+		Image:   "nginx:latest",
+		Command: []string{"nginx", "-g", "daemon off;"},
+		Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
+		Environment: map[string]string{
+			"APP_VAR":    "from-app",
+			"SHARED_VAR": "app-value",
+		},
+	}
+	app := newApp(appName, []helxv1.Service{svc})
+	user := newUser(userName)
+	user.Spec.Environment = map[string]string{
+		"USER_VAR":   "from-user",
+		"SHARED_VAR": "user-value",
+	}
+	user.Spec.Volumes = map[string]string{
+		"userhome": claimName + ":/home/user",
+	}
+	inst := newInst(instName, appName, userName)
+	inst.Spec.Environment = map[string]string{
+		"INST_VAR":   "from-inst",
+		"SHARED_VAR": "inst-value",
+	}
+
+	pvcObj := &corev1.PersistentVolumeClaim{}
+	pvcObj.Name = claimName
+	pvcObj.Namespace = testNS
+	registerCleanup(t, inst, app, user, pvcObj)
+
+	createObj(t, app)
+	createObj(t, user)
+	createObj(t, inst)
+
+	uuid := waitForInstUUID(t, instName)
+	deploy := waitForDeployment(t, uuid)
+
+	containers := deploy.Spec.Template.Spec.Containers
+	if len(containers) == 0 {
+		t.Fatal("expected at least one container")
+	}
+
+	// Check environment merge: inst > user > app
+	envMap := make(map[string]string)
+	for _, e := range containers[0].Env {
+		envMap[e.Name] = e.Value
+	}
+	if envMap["APP_VAR"] != "from-app" {
+		t.Errorf("expected APP_VAR=from-app, got %s", envMap["APP_VAR"])
+	}
+	if envMap["USER_VAR"] != "from-user" {
+		t.Errorf("expected USER_VAR=from-user, got %s", envMap["USER_VAR"])
+	}
+	if envMap["INST_VAR"] != "from-inst" {
+		t.Errorf("expected INST_VAR=from-inst, got %s", envMap["INST_VAR"])
+	}
+	if envMap["SHARED_VAR"] != "inst-value" {
+		t.Errorf("expected SHARED_VAR=inst-value (inst > user > app), got %s", envMap["SHARED_VAR"])
+	}
+
+	// Check user volume is mounted
+	foundMount := false
+	for _, vm := range containers[0].VolumeMounts {
+		if vm.Name == "userhome" {
+			foundMount = true
+		}
+	}
+	if !foundMount {
+		t.Error("expected user volume 'userhome' mounted on container")
+	}
+
+	// Check user PVC was created
+	waitForPVC(t, claimName)
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers for update tests
 // ---------------------------------------------------------------------------
 
