@@ -280,7 +280,7 @@ ProcessVolume parses a volume string according to the following BNF specificatio
 <value>         ::= <string>
 
 Where:
-  - <scheme> can be "pvc" or "nfs". If omitted, defaults to "pvc".
+  - <scheme> can be "pvc", "nfs", "secret", or "configmap". If omitted, defaults to "pvc".
   - <src> is the source of the volume.
   - <mntpoint> is the mount point for the volume.
   - <subpath> (optional) is a subpath within the volume.
@@ -296,6 +296,8 @@ for flexible volume specification with optional default values for omitted parts
 Example volume strings:
 - "pvc://myvolume:/mnt"
 - "nfs://server/path:/mnt#subpath,opt1=val1,opt2"
+- "secret://my-secret:/mnt/secret#keyname,ro"
+- "configmap://my-config:/etc/config"
 - "myvolume:/mnt,opt1,opt2=val2"
 
 This function returns a pointer to a Volume and VolumeMount object populated
@@ -304,7 +306,7 @@ format.
 */
 func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_io.VolumeMount, error) {
 	attr := make(map[string]string)
-	pattern := `^(?:(pvc|nfs)(:\/\/))?([^:#,]+):([^:#,]+)(?:#([^:#,]*))?(?:,(([^:#,=]+(?:=[^:#,=]+)?)(?:,([^:#,=]+(?:=[^:#,=]+)?))*))?$`
+	pattern := `^(?:(pvc|nfs|secret|configmap)(:\/\/))?([^:#,]+):([^:#,]+)(?:#([^:#,]*))?(?:,(([^:#,=]+(?:=[^:#,=]+)?)(?:,([^:#,=]+(?:=[^:#,=]+)?))*))?$`
 	re := regexp.MustCompile(pattern)
 
 	matches := re.FindStringSubmatch(volumeStr)
@@ -346,6 +348,10 @@ func processVolume(volumeId, volumeStr string) (*template_io.Volume, *template_i
 		// The first part is empty due to the leading '/', so parts[1] is the server and parts[2] is the path
 		attr["server"] = parts[1]
 		attr["path"] = "/" + parts[2] // Prepend '/' to the path to maintain its absolute format
+	} else if scheme == "secret" {
+		attr["secretName"] = src
+	} else if scheme == "configmap" {
+		attr["configMapName"] = src
 	} else {
 		return nil, nil, fmt.Errorf("unknown scheme")
 	}

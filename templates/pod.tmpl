@@ -68,6 +68,12 @@ volumes:
     nfs:
       server: {{ $volume.Attr.server }}
       path: {{ $volume.Attr.path }}
+    {{- else if eq $volume.Scheme "secret" }}
+    secret:
+      secretName: {{ $volume.Attr.secretName }}
+    {{- else if eq $volume.Scheme "configmap" }}
+    configMap:
+      name: {{ $volume.Attr.configMapName }}
     {{- end }}
   {{- end }}
 {{- end }}

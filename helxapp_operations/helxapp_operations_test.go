@@ -455,6 +455,82 @@ func TestProcessVolume_InvalidNFS(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Secret and ConfigMap volume scheme tests
+// ---------------------------------------------------------------------------
+
+func TestProcessVolume_Secret(t *testing.T) {
+	vol, mnt, err := processVolume("v1", "secret://my-secret:/mnt/secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vol.Scheme != "secret" {
+		t.Errorf("expected secret scheme, got %s", vol.Scheme)
+	}
+	if vol.Attr["secretName"] != "my-secret" {
+		t.Errorf("expected secretName=my-secret, got %s", vol.Attr["secretName"])
+	}
+	if mnt.MountPath != "/mnt/secret" {
+		t.Errorf("expected /mnt/secret, got %s", mnt.MountPath)
+	}
+}
+
+func TestProcessVolume_SecretReadOnly(t *testing.T) {
+	_, mnt, err := processVolume("v1", "secret://my-secret:/mnt/secret,ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mnt.ReadOnly {
+		t.Error("expected ReadOnly=true")
+	}
+}
+
+func TestProcessVolume_SecretSubPath(t *testing.T) {
+	_, mnt, err := processVolume("v1", "secret://my-secret:/mnt/secret#tls.crt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mnt.SubPath != "tls.crt" {
+		t.Errorf("expected subPath=tls.crt, got %s", mnt.SubPath)
+	}
+}
+
+func TestProcessVolume_ConfigMap(t *testing.T) {
+	vol, mnt, err := processVolume("v1", "configmap://my-config:/etc/config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vol.Scheme != "configmap" {
+		t.Errorf("expected configmap scheme, got %s", vol.Scheme)
+	}
+	if vol.Attr["configMapName"] != "my-config" {
+		t.Errorf("expected configMapName=my-config, got %s", vol.Attr["configMapName"])
+	}
+	if mnt.MountPath != "/etc/config" {
+		t.Errorf("expected /etc/config, got %s", mnt.MountPath)
+	}
+}
+
+func TestProcessVolume_ConfigMapReadOnly(t *testing.T) {
+	_, mnt, err := processVolume("v1", "configmap://my-config:/etc/config,ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mnt.ReadOnly {
+		t.Error("expected ReadOnly=true")
+	}
+}
+
+func TestProcessVolume_ConfigMapSubPath(t *testing.T) {
+	_, mnt, err := processVolume("v1", "configmap://my-config:/etc/config/app.conf#app.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mnt.SubPath != "app.conf" {
+		t.Errorf("expected subPath=app.conf, got %s", mnt.SubPath)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // 26-29: processImageAndOptions tests
 // ---------------------------------------------------------------------------
 
@@ -1818,5 +1894,77 @@ func TestGenerateArtifacts_UserEnvAndVolumes(t *testing.T) {
 	// User PVC should be created
 	if _, ok := artifacts.PVCs["alice-home"]; !ok {
 		t.Error("expected PVC for user volume alice-home")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Secret and ConfigMap volume rendering tests
+// ---------------------------------------------------------------------------
+
+func TestGenerateArtifacts_SecretVolume(t *testing.T) {
+	app := makeApp("ns", "myapp", "App", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			Volumes: map[string]string{"creds": "secret://db-creds:/mnt/creds,ro"},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-secret")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+	if !strings.Contains(render, "secret:") {
+		t.Error("deployment should contain secret volume source")
+	}
+	if !strings.Contains(render, "secretName: db-creds") {
+		t.Errorf("deployment should contain secretName: db-creds, got:\n%s", render)
+	}
+	// Secret volumes should NOT produce PVCs
+	if len(artifacts.PVCs) != 0 {
+		t.Errorf("expected 0 PVCs for secret volume, got %d", len(artifacts.PVCs))
+	}
+}
+
+func TestGenerateArtifacts_ConfigMapVolume(t *testing.T) {
+	app := makeApp("ns", "myapp", "App", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			Volumes: map[string]string{"cfg": "configmap://app-config:/etc/config"},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-configmap")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+	if !strings.Contains(render, "configMap:") {
+		t.Error("deployment should contain configMap volume source")
+	}
+	if !strings.Contains(render, "name: app-config") {
+		t.Errorf("deployment should contain name: app-config, got:\n%s", render)
+	}
+	// ConfigMap volumes should NOT produce PVCs
+	if len(artifacts.PVCs) != 0 {
+		t.Errorf("expected 0 PVCs for configmap volume, got %d", len(artifacts.PVCs))
 	}
 }

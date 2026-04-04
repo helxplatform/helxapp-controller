@@ -207,14 +207,24 @@ Volume sources in `HelxApp.Spec.Services[*].Volumes` use a mini-DSL:
 
 | Segment | Description |
 |---------|-------------|
-| `scheme` | `pvc` (default) or `nfs` |
-| `src` | PVC claim name, or NFS server path (`//server/path`) |
+| `scheme` | `pvc` (default), `nfs`, `secret`, or `configmap` |
+| `src` | PVC claim name, NFS server path (`//server/path`), Secret name, or ConfigMap name |
 | `mountPath` | Container mount point |
-| `subPath` | Optional sub-directory within the volume |
+| `subPath` | Optional sub-directory within the volume (or key name for secrets/configmaps) |
 | `retain` | Option flag; adds `helx.renci.org/retain: true` label to the PVC, preventing deletion |
 | `rwx` / `rox` / `rwop` | PVC access mode flags (default `ReadWriteOnce`) |
 | `size` | PVC storage size (default `1G`) |
 | `storageClass` | PVC storage class name |
+| `ro` | Mount read-only in the container |
+
+**Scheme behavior:**
+
+| Scheme | Kubernetes Volume Type | Creates PVC? | src meaning |
+|--------|----------------------|-------------|-------------|
+| `pvc` | `persistentVolumeClaim` | Yes | Claim name |
+| `nfs` | `nfs` | No | `//server/path` |
+| `secret` | `secret` | No | Secret name |
+| `configmap` | `configMap` | No | ConfigMap name |
 
 The `volumeId` map key becomes the Kubernetes volume name within the pod spec.
 

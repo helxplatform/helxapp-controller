@@ -57,8 +57,9 @@ The three CRDs arrive independently and in any order. The controller maintains a
 ### Volume DSL
 
 Volumes use a mini-language: `[scheme://]src:mountPath[#subPath][,option=value...]`
-- Schemes: `pvc` (default), `nfs`
-- Options: `retain`, `rwx`/`rox`/`rwop`, `size`, `storageClass`
+- Schemes: `pvc` (default), `nfs`, `secret`, `configmap`
+- Options: `retain`, `rwx`/`rox`/`rwop`, `size`, `storageClass`, `ro`
+- Secret/configmap volumes mount pre-existing K8s resources (no PVC created)
 
 ### Security context priority
 
