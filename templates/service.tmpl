@@ -6,6 +6,34 @@ metadata:
   labels:
     executor: helxapp-controller
     "helx.renci.org/id": {{ .system.UUID }}
+  {{- if .container.Ambassador }}
+  annotations:
+    getambassador.io/config: |
+      ---
+      apiVersion: ambassador/v1
+      kind: Mapping
+      name: {{ .system.AppName }}-{{ .system.UUID }}-mapping
+      {{- if .container.Ambassador.AmbassadorID }}
+      ambassador_id: {{ .container.Ambassador.AmbassadorID }}
+      {{- end }}
+      prefix: {{ .container.Ambassador.Prefix }}
+      service: {{ .system.AppName }}-{{ .system.UUID }}:{{ (index .container.Ports 0).Port }}
+      headers:
+        REMOTE_USER: {{ .system.UserName }}
+      {{- if .container.Ambassador.ProxyRewrite }}
+      rewrite: {{ .container.Ambassador.ProxyRewrite }}
+      add_response_headers:
+        X-Original-Path: {{ .container.Ambassador.Prefix }}
+      {{- end }}
+      retry_policy:
+        retry_on: gateway-error
+        num_retries: 10
+      bypass_auth: true
+      timeout_ms: 300000
+      idle_timeout_ms: 500000
+      connect_timeout_ms: 500000
+      use_websocket: true
+  {{- end }}
   name: {{ .system.AppName }}-{{ .system.UUID }}
 spec:
   type: ClusterIP

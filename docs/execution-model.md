@@ -35,6 +35,7 @@ Each `Service` entry carries:
 | `resourceBounds` | Per-resource `min`/`max` bounds (advisory; the instance overrides actual requests/limits) |
 | `securityContext` | Per-container UID/GID/FSGroup/supplementalGroups |
 | `volumes` | Map of `volumeId → volume-source string` (see Volume DSL below) |
+| `ambassador` | Optional Ambassador mapping config (`ambassadorId`, `prefix`, `proxyRewrite`). When present, the generated Service gets a `getambassador.io/config` annotation. The `prefix` field supports Go template expressions and defaults to `/private/<AppClassName>/<UserName>/<UUID>/`. |
 
 ### HelxInst — the instance request
 
@@ -250,6 +251,7 @@ Deployment  (always one)
 PersistentVolumeClaim  (one per unique pvc:// volume across all services)
 
 Service  (one per service that declares at least one port with a non-zero port)
+  └─ If service.ambassador is set: annotated with getambassador.io/config Mapping
 ```
 
 All derived objects share the label `helx.renci.org/id: <UUID>`, which ties them to the owning `HelxInst` and is used for set-based deletion.

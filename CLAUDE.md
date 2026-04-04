@@ -28,7 +28,7 @@ Tests use ginkgo v2 + gomega. The controllers test suite uses envtest (local API
 
 This is a Kubernetes operator (controller-runtime/Kubebuilder) managing three CRDs in API group `helx.renci.org/v1`:
 
-- **HelxApp** — application template (images, ports, env, volumes, security context)
+- **HelxApp** — application template (images, ports, env, volumes, security context, optional Ambassador mapping)
 - **HelxInst** — per-user instance request referencing an app + user; triggers workload creation. Has its own `environment` map — highest precedence in the three-way merge (app < user < inst).
 - **HelxUser** — user record; `userHandle` URL fetches security context (uid/gid) via HTTP. Has `environment` and `volumes` fields merged with app/inst (app < user < inst precedence).
 

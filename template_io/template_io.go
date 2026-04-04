@@ -49,6 +49,12 @@ type EnvFromSource struct {
 	ConfigMapName string // non-empty → configMapRef
 }
 
+type AmbassadorMapping struct {
+	AmbassadorID string // optional; restricts to a specific Ambassador instance
+	Prefix       string // URL prefix (rendered via double-pass)
+	ProxyRewrite string // optional upstream rewrite target
+}
+
 type Container struct {
 	Name            string
 	Image           Image
@@ -62,6 +68,7 @@ type Container struct {
 	SecurityContext *SecurityContext
 	LivenessProbe   *Probe
 	ReadinessProbe  *Probe
+	Ambassador      *AmbassadorMapping
 }
 
 type PortMap struct {

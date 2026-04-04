@@ -572,6 +572,18 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp, user helxv1.Hel
 			service.SecretsFrom, user.Spec.SecretsFrom, instance.Spec.SecretsFrom,
 			service.ConfigMapsFrom, user.Spec.ConfigMapsFrom, instance.Spec.ConfigMapsFrom,
 		)
+		var ambassador *template_io.AmbassadorMapping
+		if service.Ambassador != nil {
+			prefix := service.Ambassador.Prefix
+			if prefix == "" {
+				prefix = "/private/{{ .system.AppClassName }}/{{ .system.UserName }}/{{ .system.UUID }}/"
+			}
+			ambassador = &template_io.AmbassadorMapping{
+				AmbassadorID: service.Ambassador.AmbassadorID,
+				Prefix:       prefix,
+				ProxyRewrite: service.Ambassador.ProxyRewrite,
+			}
+		}
 		container := template_io.Container{
 			Name:            service.Name,
 			Command:         service.Command[:],
@@ -583,6 +595,7 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp, user helxv1.Hel
 			Resources:       resources,
 			SecurityContext: template_io.ExtractSCFromCR(service.SecurityContext),
 			VolumeMounts:    volumeList,
+			Ambassador:      ambassador,
 		}
 
 		containers = append(containers, container)

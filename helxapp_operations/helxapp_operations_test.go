@@ -2111,3 +2111,163 @@ func TestGenerateArtifacts_EnvFrom(t *testing.T) {
 		t.Errorf("deployment should contain name: user-settings, got:\n%s", render)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Ambassador mapping tests
+// ---------------------------------------------------------------------------
+
+func TestTransformApp_AmbassadorNil(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:    "main",
+					Image:   "nginx",
+					Command: []string{"nginx"},
+					Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+				},
+			},
+		},
+	}
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "alice", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containers[0].Ambassador != nil {
+		t.Error("expected nil Ambassador when not set on service")
+	}
+}
+
+func TestTransformApp_AmbassadorDefaults(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:       "main",
+					Image:      "nginx",
+					Command:    []string{"nginx"},
+					Ports:      []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+					Ambassador: &helxv1.AmbassadorMapping{},
+				},
+			},
+		},
+	}
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "alice", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	amb := containers[0].Ambassador
+	if amb == nil {
+		t.Fatal("expected Ambassador to be set")
+	}
+	// Default prefix should contain template expressions
+	if !strings.Contains(amb.Prefix, "{{ .system.AppClassName }}") {
+		t.Errorf("expected default prefix with template, got %s", amb.Prefix)
+	}
+}
+
+func TestTransformApp_AmbassadorCustom(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:    "main",
+					Image:   "nginx",
+					Command: []string{"nginx"},
+					Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+					Ambassador: &helxv1.AmbassadorMapping{
+						AmbassadorID: "my-ambassador",
+						Prefix:       "/custom/{{ .system.UserName }}/",
+						ProxyRewrite: "/",
+					},
+				},
+			},
+		},
+	}
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	containers, _, err := transformApp(inst, app, *makeUser("ns", "alice", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	amb := containers[0].Ambassador
+	if amb == nil {
+		t.Fatal("expected Ambassador")
+	}
+	if amb.AmbassadorID != "my-ambassador" {
+		t.Errorf("expected my-ambassador, got %s", amb.AmbassadorID)
+	}
+	if amb.Prefix != "/custom/{{ .system.UserName }}/" {
+		t.Errorf("expected custom prefix, got %s", amb.Prefix)
+	}
+	if amb.ProxyRewrite != "/" {
+		t.Errorf("expected rewrite /, got %s", amb.ProxyRewrite)
+	}
+}
+
+func TestGenerateArtifacts_AmbassadorAnnotation(t *testing.T) {
+	app := makeApp("ns", "myapp", "Filebrowser", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
+			Ambassador: &helxv1.AmbassadorMapping{},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-amb")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	svcRender := artifacts.Services["main"].Render
+	if !strings.Contains(svcRender, "getambassador.io/config") {
+		t.Errorf("service should contain ambassador annotation, got:\n%s", svcRender)
+	}
+	if !strings.Contains(svcRender, "kind: Mapping") {
+		t.Errorf("service should contain Mapping kind, got:\n%s", svcRender)
+	}
+	// Default prefix should have been resolved by double-pass rendering
+	if !strings.Contains(svcRender, "/private/Filebrowser/alice/test-uuid-amb/") {
+		t.Errorf("service should contain resolved prefix, got:\n%s", svcRender)
+	}
+	if !strings.Contains(svcRender, "REMOTE_USER: alice") {
+		t.Errorf("service should contain REMOTE_USER header, got:\n%s", svcRender)
+	}
+	if !strings.Contains(svcRender, "use_websocket: true") {
+		t.Errorf("service should contain websocket config, got:\n%s", svcRender)
+	}
+}
+
+func TestGenerateArtifacts_NoAmbassadorAnnotation(t *testing.T) {
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-noamb")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	svcRender := artifacts.Services["main"].Render
+	if strings.Contains(svcRender, "getambassador.io") {
+		t.Errorf("service should NOT contain ambassador annotation when not configured, got:\n%s", svcRender)
+	}
+}

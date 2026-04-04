@@ -45,6 +45,24 @@ spec:
                 items:
                   description: Service represents a single service in a HeLxApp
                   properties:
+                    ambassador:
+                      description: AmbassadorMapping configures an Ambassador routing
+                        annotation on the Service.
+                      properties:
+                        ambassadorId:
+                          description: AmbassadorID restricts this mapping to a specific
+                            Ambassador instance.
+                          type: string
+                        prefix:
+                          description: |-
+                            Prefix is the URL path prefix. Supports Go template expressions.
+                            Default: /private/<AppClassName>/<UserName>/<UUID>/
+                          type: string
+                        proxyRewrite:
+                          description: ProxyRewrite rewrites the upstream path. If
+                            empty, no rewrite is applied.
+                          type: string
+                      type: object
                     command:
                       items:
                         type: string

@@ -30,6 +30,17 @@ type HelxAppSpec struct {
 	Services     []Service `json:"services"`
 }
 
+// AmbassadorMapping configures an Ambassador routing annotation on the Service.
+type AmbassadorMapping struct {
+	// AmbassadorID restricts this mapping to a specific Ambassador instance.
+	AmbassadorID string `json:"ambassadorId,omitempty"`
+	// Prefix is the URL path prefix. Supports Go template expressions.
+	// Default: /private/<AppClassName>/<UserName>/<UUID>/
+	Prefix string `json:"prefix,omitempty"`
+	// ProxyRewrite rewrites the upstream path. If empty, no rewrite is applied.
+	ProxyRewrite string `json:"proxyRewrite,omitempty"`
+}
+
 // Service represents a single service in a HeLxApp
 type Service struct {
 	Name            string                      `json:"name"`
@@ -43,6 +54,7 @@ type Service struct {
 	ResourceBounds  map[string]ResourceBoundary `json:"resourceBounds,omitempty"`
 	SecurityContext *SecurityContext            `json:"securityContext,omitempty"`
 	Volumes         map[string]string           `json:"volumes,omitempty"`
+	Ambassador      *AmbassadorMapping          `json:"ambassador,omitempty"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp
