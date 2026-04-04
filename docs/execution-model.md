@@ -28,6 +28,8 @@ Each `Service` entry carries:
 | `image` | Docker image reference, optionally followed by `,key=value` options (e.g. `,Always`) |
 | `command[]` | Optional override for the container entrypoint; may contain Go template expressions |
 | `environment` | Map of `NAME: value` env vars; may contain Go template expressions |
+| `secretsFrom` | List of Secret names; all keys injected as container env vars via `envFrom[].secretRef` |
+| `configMapsFrom` | List of ConfigMap names; all keys injected as container env vars via `envFrom[].configMapRef` |
 | `init` | If `true`, this service becomes an init container |
 | `ports[]` | `containerPort` / `port` pairs; a non-zero `port` means a Kubernetes Service is needed |
 | `resourceBounds` | Per-resource `min`/`max` bounds (advisory; the instance overrides actual requests/limits) |
@@ -45,6 +47,8 @@ Key fields (`HelxInstSpec`):
 | `appName` | Name (or `namespace/name`) of the `HelxApp` to instantiate |
 | `userName` | Name (or `namespace/name`) of the `HelxUser` who owns this instance |
 | `environment` | Instance-level env vars (`map[string]string`); highest precedence in the three-way merge (app < user < inst) |
+| `secretsFrom` | List of Secret names; keys injected as env vars via `envFrom[].secretRef` (merged with app/user) |
+| `configMapsFrom` | List of ConfigMap names; keys injected as env vars via `envFrom[].configMapRef` (merged with app/user) |
 | `securityContext` | Instance-level security context; overrides user-fetched context when present |
 | `resources` | Map of `serviceName → {requests, limits}` — per-container resource requests/limits |
 
@@ -63,6 +67,8 @@ A `HelxUser` represents a platform user. It can carry user-level environment var
 |-------|---------|
 | `userHandle` | Optional URL; the controller performs an HTTP GET and parses the JSON response for `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups` |
 | `environment` | User-level env vars (`map[string]string`); merged between app-level and instance-level (app < user < inst precedence) |
+| `secretsFrom` | List of Secret names; keys injected as env vars via `envFrom[].secretRef` (merged with app/inst) |
+| `configMapsFrom` | List of ConfigMap names; keys injected as env vars via `envFrom[].configMapRef` (merged with app/inst) |
 | `volumes` | User-level volumes (same DSL as HelxApp service volumes); parsed and mounted on every container in the deployment |
 
 ---

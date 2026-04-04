@@ -1968,3 +1968,146 @@ func TestGenerateArtifacts_ConfigMapVolume(t *testing.T) {
 		t.Errorf("expected 0 PVCs for configmap volume, got %d", len(artifacts.PVCs))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// buildEnvFrom and envFrom rendering tests
+// ---------------------------------------------------------------------------
+
+func TestBuildEnvFrom_Empty(t *testing.T) {
+	result := buildEnvFrom(nil, nil, nil, nil, nil, nil)
+	if len(result) != 0 {
+		t.Errorf("expected empty, got %d", len(result))
+	}
+}
+
+func TestBuildEnvFrom_SecretsOnly(t *testing.T) {
+	result := buildEnvFrom([]string{"db-creds"}, nil, nil, nil, nil, nil)
+	if len(result) != 1 {
+		t.Fatalf("expected 1, got %d", len(result))
+	}
+	if result[0].SecretName != "db-creds" {
+		t.Errorf("expected db-creds, got %s", result[0].SecretName)
+	}
+}
+
+func TestBuildEnvFrom_ConfigMapsOnly(t *testing.T) {
+	result := buildEnvFrom(nil, nil, nil, []string{"app-config"}, nil, nil)
+	if len(result) != 1 {
+		t.Fatalf("expected 1, got %d", len(result))
+	}
+	if result[0].ConfigMapName != "app-config" {
+		t.Errorf("expected app-config, got %s", result[0].ConfigMapName)
+	}
+}
+
+func TestBuildEnvFrom_Dedup(t *testing.T) {
+	// Same secret at app and inst level should appear once
+	result := buildEnvFrom([]string{"shared"}, nil, []string{"shared"}, nil, nil, nil)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 (deduped), got %d", len(result))
+	}
+	if result[0].SecretName != "shared" {
+		t.Errorf("expected shared, got %s", result[0].SecretName)
+	}
+}
+
+func TestBuildEnvFrom_AllThreeLevels(t *testing.T) {
+	result := buildEnvFrom(
+		[]string{"app-secret"}, []string{"user-secret"}, []string{"inst-secret"},
+		[]string{"app-cm"}, []string{"user-cm"}, []string{"inst-cm"},
+	)
+	if len(result) != 6 {
+		t.Fatalf("expected 6 envFrom sources, got %d", len(result))
+	}
+}
+
+func TestTransformApp_EnvFrom(t *testing.T) {
+	app := helxv1.HelxApp{
+		Spec: helxv1.HelxAppSpec{
+			Services: []helxv1.Service{
+				{
+					Name:           "main",
+					Image:          "nginx",
+					Command:        []string{"nginx"},
+					Ports:          []helxv1.PortMap{{ContainerPort: 80}},
+					SecretsFrom:    []string{"app-secret"},
+					ConfigMapsFrom: []string{"app-config"},
+				},
+			},
+		},
+	}
+	user := helxv1.HelxUser{}
+	user.Name = "alice"
+	user.Namespace = "ns"
+	user.Spec.SecretsFrom = []string{"user-secret"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-1")
+	inst.Spec.ConfigMapsFrom = []string{"inst-config"}
+
+	containers, _, err := transformApp(inst, app, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envFrom := containers[0].EnvFrom
+	if len(envFrom) != 4 {
+		t.Fatalf("expected 4 envFrom sources, got %d", len(envFrom))
+	}
+	// Check that we have the expected sources
+	secretNames := map[string]bool{}
+	cmNames := map[string]bool{}
+	for _, ef := range envFrom {
+		if ef.SecretName != "" {
+			secretNames[ef.SecretName] = true
+		}
+		if ef.ConfigMapName != "" {
+			cmNames[ef.ConfigMapName] = true
+		}
+	}
+	if !secretNames["app-secret"] || !secretNames["user-secret"] {
+		t.Errorf("missing expected secrets: %v", secretNames)
+	}
+	if !cmNames["app-config"] || !cmNames["inst-config"] {
+		t.Errorf("missing expected configmaps: %v", cmNames)
+	}
+}
+
+func TestGenerateArtifacts_EnvFrom(t *testing.T) {
+	app := makeApp("ns", "myapp", "App", []helxv1.Service{
+		{
+			Name:        "main",
+			Image:       "nginx",
+			Command:     []string{"nginx"},
+			Ports:       []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			SecretsFrom: []string{"db-creds"},
+		},
+	})
+	user := makeUser("ns", "alice", nil)
+	user.Spec.ConfigMapsFrom = []string{"user-settings"}
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "test-uuid-envfrom")
+
+	setupGraphForArtifacts(app, user, inst)
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+	if !strings.Contains(render, "envFrom:") {
+		t.Errorf("deployment should contain envFrom block, got:\n%s", render)
+	}
+	if !strings.Contains(render, "secretRef:") {
+		t.Errorf("deployment should contain secretRef, got:\n%s", render)
+	}
+	if !strings.Contains(render, "name: db-creds") {
+		t.Errorf("deployment should contain name: db-creds, got:\n%s", render)
+	}
+	if !strings.Contains(render, "configMapRef:") {
+		t.Errorf("deployment should contain configMapRef, got:\n%s", render)
+	}
+	if !strings.Contains(render, "name: user-settings") {
+		t.Errorf("deployment should contain name: user-settings, got:\n%s", render)
+	}
+}

@@ -1,5 +1,21 @@
 
 
+{{- define "containerEnvFrom" }}
+{{- if gt (len .EnvFrom) 0 }}
+envFrom:
+{{- range $src := .EnvFrom }}
+{{- if $src.SecretName }}
+- secretRef:
+    name: {{ $src.SecretName }}
+{{- end }}
+{{- if $src.ConfigMapName }}
+- configMapRef:
+    name: {{ $src.ConfigMapName }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "containerEnv" }}
 {{- if or (ne (len .container.Environment) 0) (ne (len .system.Environment) 0) }}
 env:
@@ -145,6 +161,7 @@ volumeMounts:
     {{- end }}
   {{- end }}
   {{- templateToString "containerEnv" $context | indent 2 }}
+  {{- templateToString "containerEnvFrom" $container | indent 2 }}
   image: {{ $container.Image.ImageName }}
   {{- if $container.Image.Attr.Always }}
   imagePullPolicy: Always

@@ -25,9 +25,11 @@ import (
 
 // HelxUserSpec defines the desired state of HelxUser
 type HelxUserSpec struct {
-	UserHandle  *string           `json:"userHandle,omitempty"`
-	Environment map[string]string `json:"environment,omitempty"`
-	Volumes     map[string]string `json:"volumes,omitempty"`
+	UserHandle     *string           `json:"userHandle,omitempty"`
+	Environment    map[string]string `json:"environment,omitempty"`
+	SecretsFrom    []string          `json:"secretsFrom,omitempty"`
+	ConfigMapsFrom []string          `json:"configMapsFrom,omitempty"`
+	Volumes        map[string]string `json:"volumes,omitempty"`
 }
 
 // HelxUserStatus defines the observed state of HelxUser

@@ -44,11 +44,17 @@ type Image struct {
 	Attr      map[string]string
 }
 
+type EnvFromSource struct {
+	SecretName    string // non-empty → secretRef
+	ConfigMapName string // non-empty → configMapRef
+}
+
 type Container struct {
 	Name            string
 	Image           Image
 	Command         []string
 	Environment     map[string]string
+	EnvFrom         []EnvFromSource
 	HasService      bool
 	Ports           []PortMap
 	Resources       Resources

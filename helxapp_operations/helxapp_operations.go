@@ -467,6 +467,55 @@ func transFormImage(imageString string) template_io.Image {
 	}
 }
 
+// buildEnvFrom merges secretsFrom and configMapsFrom lists from app, user, and instance
+// into a deduplicated slice of EnvFromSource. Later entries override earlier ones
+// (dedup by resource name).
+func buildEnvFrom(appSecrets, userSecrets, instSecrets, appConfigMaps, userConfigMaps, instConfigMaps []string) []template_io.EnvFromSource {
+	// Use a map to deduplicate by name. Instance > User > App.
+	seen := make(map[string]template_io.EnvFromSource)
+	order := []string{}
+
+	addSecret := func(name string) {
+		key := "secret:" + name
+		if _, exists := seen[key]; !exists {
+			order = append(order, key)
+		}
+		seen[key] = template_io.EnvFromSource{SecretName: name}
+	}
+	addConfigMap := func(name string) {
+		key := "configmap:" + name
+		if _, exists := seen[key]; !exists {
+			order = append(order, key)
+		}
+		seen[key] = template_io.EnvFromSource{ConfigMapName: name}
+	}
+
+	for _, s := range appSecrets {
+		addSecret(s)
+	}
+	for _, s := range userSecrets {
+		addSecret(s)
+	}
+	for _, s := range instSecrets {
+		addSecret(s)
+	}
+	for _, c := range appConfigMaps {
+		addConfigMap(c)
+	}
+	for _, c := range userConfigMaps {
+		addConfigMap(c)
+	}
+	for _, c := range instConfigMaps {
+		addConfigMap(c)
+	}
+
+	var result []template_io.EnvFromSource
+	for _, key := range order {
+		result = append(result, seen[key])
+	}
+	return result
+}
+
 // mergeEnvironment merges app-level and instance-level environment variables.
 // Instance values take precedence over app values when the same key exists in both.
 func mergeEnvironment(appEnv, instEnv map[string]string) map[string]string {
@@ -519,10 +568,15 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp, user helxv1.Hel
 		// Three-way merge: app < user < inst.
 		env := mergeEnvironment(service.Environment, user.Spec.Environment)
 		env = mergeEnvironment(env, instance.Spec.Environment)
+		envFrom := buildEnvFrom(
+			service.SecretsFrom, user.Spec.SecretsFrom, instance.Spec.SecretsFrom,
+			service.ConfigMapsFrom, user.Spec.ConfigMapsFrom, instance.Spec.ConfigMapsFrom,
+		)
 		container := template_io.Container{
 			Name:            service.Name,
 			Command:         service.Command[:],
 			Environment:     env,
+			EnvFrom:         envFrom,
 			HasService:      hasService,
 			Image:           transFormImage(service.Image),
 			Ports:           ports,

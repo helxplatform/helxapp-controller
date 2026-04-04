@@ -36,6 +36,8 @@ type Service struct {
 	Image           string                      `json:"image"`
 	Command         []string                    `json:"command,omitempty"`
 	Environment     map[string]string           `json:"environment,omitempty"`
+	SecretsFrom     []string                    `json:"secretsFrom,omitempty"`
+	ConfigMapsFrom  []string                    `json:"configMapsFrom,omitempty"`
 	Init            bool                        `json:"init,omitempty"`
 	Ports           []PortMap                   `json:"ports,omitempty"`
 	ResourceBounds  map[string]ResourceBoundary `json:"resourceBounds,omitempty"`

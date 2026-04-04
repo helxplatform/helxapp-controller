@@ -49,6 +49,10 @@ spec:
                       items:
                         type: string
                       type: array
+                    configMapsFrom:
+                      items:
+                        type: string
+                      type: array
                     environment:
                       additionalProperties:
                         type: string
@@ -85,6 +89,10 @@ spec:
                             type: string
                         type: object
                       type: object
+                    secretsFrom:
+                      items:
+                        type: string
+                      type: array
                     securityContext:
                       properties:
                         fsGroup:

@@ -39,10 +39,18 @@ spec:
           spec:
             description: HelxUserSpec defines the desired state of HelxUser
             properties:
+              configMapsFrom:
+                items:
+                  type: string
+                type: array
               environment:
                 additionalProperties:
                   type: string
                 type: object
+              secretsFrom:
+                items:
+                  type: string
+                type: array
               userHandle:
                 type: string
               volumes:
