@@ -2209,10 +2209,10 @@ func TestTransformApp_AmbassadorCustom(t *testing.T) {
 func TestGenerateArtifacts_AmbassadorAnnotation(t *testing.T) {
 	app := makeApp("ns", "myapp", "Filebrowser", []helxv1.Service{
 		{
-			Name:    "main",
-			Image:   "nginx",
-			Command: []string{"nginx"},
-			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
+			Name:       "main",
+			Image:      "nginx",
+			Command:    []string{"nginx"},
+			Ports:      []helxv1.PortMap{{ContainerPort: 80, Port: 8080}},
 			Ambassador: &helxv1.AmbassadorMapping{},
 		},
 	})
