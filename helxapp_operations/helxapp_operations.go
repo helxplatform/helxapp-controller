@@ -657,7 +657,7 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 			}
 
 			systemEnv := make(map[string]string)
-			systemEnv["GUID"] = instance.Status.UUID
+			systemEnv["ReferenceID"] = instance.Spec.ReferenceID
 			systemEnv["USER"] = instance.Spec.UserName
 			systemEnv["HOST"] = ""
 			systemEnv["APP_CLASS_NAME"] = app.Spec.AppClassName
@@ -671,6 +671,7 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 				Containers:   containers,
 				Environment:  systemEnv,
 				Host:         "",
+				ReferenceID:  instance.Spec.ReferenceID,
 				UUID:         instance.Status.UUID,
 				UserName:     instance.Spec.UserName,
 				Volumes:      volumes,

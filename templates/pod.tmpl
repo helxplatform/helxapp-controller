@@ -51,6 +51,7 @@ securityContext:
 {{- end }}
 
 {{- define "podProps" }}
+  enableServiceLinks: false
 {{- if .system.SecurityContext }}
 {{- templateToString "securityContext" .system.SecurityContext | indent 2 }}
 {{- end }}

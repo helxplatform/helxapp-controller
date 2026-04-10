@@ -22,6 +22,7 @@ type System struct {
 	AppName         string
 	InstanceName    string
 	Environment     map[string]string
+	ReferenceID     string
 	UUID            string
 	Host            string
 	SecurityContext *SecurityContext

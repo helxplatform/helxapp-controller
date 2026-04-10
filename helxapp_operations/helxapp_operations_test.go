@@ -69,8 +69,9 @@ func makeInst(namespace, name, appName, userName, uuid string) *helxv1.HelxInst 
 			Namespace: namespace,
 		},
 		Spec: helxv1.HelxInstSpec{
-			AppName:  appName,
-			UserName: userName,
+			AppName:     appName,
+			ReferenceID: uuid,
+			UserName:    userName,
 		},
 		Status: helxv1.HelxInstStatus{
 			UUID: uuid,
@@ -1078,8 +1079,8 @@ func TestGenerateArtifacts_SystemEnvironment(t *testing.T) {
 	}
 	render := artifacts.Deployment.Render
 	// System env vars should be in the rendered deployment
-	if !strings.Contains(render, "GUID") {
-		t.Error("deployment should contain GUID env var")
+	if !strings.Contains(render, "ReferenceID") {
+		t.Error("deployment should contain ReferenceID env var")
 	}
 	if !strings.Contains(render, "test-uuid-10") {
 		t.Error("deployment should contain UUID value")

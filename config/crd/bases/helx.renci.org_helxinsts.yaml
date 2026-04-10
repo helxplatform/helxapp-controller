@@ -49,6 +49,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              referenceID:
+                type: string
               resources:
                 additionalProperties:
                   description: ServicePort represents a single port for a service

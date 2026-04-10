@@ -26,6 +26,7 @@ import (
 // HelxInstanceSpec defines the desired state of HelxInstance
 type HelxInstSpec struct {
 	AppName         string               `json:"appName"`
+	ReferenceID     string               `json:"referenceID,omitempty"`
 	SecurityContext *SecurityContext     `json:"securityContext,omitempty"`
 	Resources       map[string]Resources `json:"resources,omitempty"`
 	Environment     map[string]string    `json:"environment,omitempty"`
