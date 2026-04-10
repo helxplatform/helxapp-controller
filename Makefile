@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG ?= containers.renci.org/helxplatform/helxapp-controller:latest
+LDAP_PLUGIN_IMG ?= containers.renci.org/helxplatform/helxapp-ldap-plugin:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -96,6 +97,14 @@ docker-build: test ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
+.PHONY: docker-build-ldap-plugin
+docker-build-ldap-plugin: ## Build docker image for the LDAP plugin.
+	docker build --platform ${PLATFORMS} -t ${LDAP_PLUGIN_IMG} ./plugin/ldap
+
+.PHONY: docker-push-ldap-plugin
+docker-push-ldap-plugin: ## Push docker image for the LDAP plugin.
+	docker push ${LDAP_PLUGIN_IMG}
+
 .PHONY: docker-buildx
 docker-buildx: test ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
@@ -124,6 +133,11 @@ install-rbac: kustomize
 grant-access: ## Grant a namespace SA permissions to install the helm chart. Usage: make grant-access SA=<namespace>:<sa>
 	@test -n "$(SA)" || (echo "Usage: make grant-access SA=<namespace>:<serviceaccount>"; exit 1)
 	python3 ./bin/grant-access.py $(SA)
+
+.PHONY: create-ldap-secret
+create-ldap-secret: ## Create the LDAP bind-password Secret. Usage: make create-ldap-secret LDAP_PASSWORD=<pw> [LDAP_SECRET_NAME=<name>] [LDAP_NAMESPACE=<ns>]
+	@test -n "$(LDAP_PASSWORD)" || (echo "Usage: make create-ldap-secret LDAP_PASSWORD=<password> [LDAP_SECRET_NAME=<name>] [LDAP_NAMESPACE=<ns>]"; exit 1)
+	python3 ./bin/create-ldap-secret.py "$(LDAP_PASSWORD)" $(if $(LDAP_SECRET_NAME),--name $(LDAP_SECRET_NAME),) $(if $(LDAP_NAMESPACE),--namespace $(LDAP_NAMESPACE),)
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

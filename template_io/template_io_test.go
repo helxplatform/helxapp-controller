@@ -259,6 +259,81 @@ func TestExtractSCFromMap_Empty(t *testing.T) {
 	}
 }
 
+// TestExtractSCFromMap_FallbackUIDNumber - uidNumber used when runAsUser is absent
+func TestExtractSCFromMap_FallbackUIDNumber(t *testing.T) {
+	data := map[string]interface{}{
+		"uidNumber": "1001",
+		"gidNumber": "1002",
+	}
+	result := ExtractSCFromMap(data)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.RunAsUser != "1001" {
+		t.Errorf("RunAsUser = %q, want %q (fallback from uidNumber)", result.RunAsUser, "1001")
+	}
+	if result.RunAsGroup != "1002" {
+		t.Errorf("RunAsGroup = %q, want %q (fallback from gidNumber)", result.RunAsGroup, "1002")
+	}
+}
+
+// TestExtractSCFromMap_PrimaryOverridesFallback - runAsUser takes precedence over uidNumber
+func TestExtractSCFromMap_PrimaryOverridesFallback(t *testing.T) {
+	data := map[string]interface{}{
+		"runAsUser":  "500",
+		"uidNumber":  "1001",
+		"runAsGroup": "600",
+		"gidNumber":  "1002",
+	}
+	result := ExtractSCFromMap(data)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.RunAsUser != "500" {
+		t.Errorf("RunAsUser = %q, want %q (primary should override fallback)", result.RunAsUser, "500")
+	}
+	if result.RunAsGroup != "600" {
+		t.Errorf("RunAsGroup = %q, want %q (primary should override fallback)", result.RunAsGroup, "600")
+	}
+}
+
+// TestExtractSCFromMap_EmptyPrimaryFallsBack - empty runAsUser string falls back to uidNumber
+func TestExtractSCFromMap_EmptyPrimaryFallsBack(t *testing.T) {
+	data := map[string]interface{}{
+		"runAsUser":  "",
+		"uidNumber":  "1001",
+		"runAsGroup": "",
+		"gidNumber":  "1002",
+	}
+	result := ExtractSCFromMap(data)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.RunAsUser != "1001" {
+		t.Errorf("RunAsUser = %q, want %q (empty primary should fall back)", result.RunAsUser, "1001")
+	}
+	if result.RunAsGroup != "1002" {
+		t.Errorf("RunAsGroup = %q, want %q (empty primary should fall back)", result.RunAsGroup, "1002")
+	}
+}
+
+// TestExtractSCFromMap_OnlyUIDNumber - only uidNumber present, no other fields
+func TestExtractSCFromMap_OnlyUIDNumber(t *testing.T) {
+	data := map[string]interface{}{
+		"uidNumber": "5000",
+	}
+	result := ExtractSCFromMap(data)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.RunAsUser != "5000" {
+		t.Errorf("RunAsUser = %q, want %q", result.RunAsUser, "5000")
+	}
+	if result.RunAsGroup != "" {
+		t.Errorf("RunAsGroup = %q, want empty", result.RunAsGroup)
+	}
+}
+
 // 59. TestReRender_Stable - plain text without template expressions
 func TestReRender_Stable(t *testing.T) {
 	input := "hello world, no templates here"

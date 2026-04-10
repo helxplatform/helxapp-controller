@@ -152,15 +152,21 @@ func ExtractSCFromMap(data map[string]interface{}) *SecurityContext {
 	var res SecurityContext = SecurityContext{}
 	var empty bool = true
 
-	if value, ok := data["fsGroup"].(string); ok {
+	if value, ok := data["fsGroup"].(string); ok && value != "" {
 		res.FSGroup = value
 		empty = false
 	}
-	if value, ok := data["runAsGroup"].(string); ok {
+	if value, ok := data["runAsGroup"].(string); ok && value != "" {
+		res.RunAsGroup = value
+		empty = false
+	} else if value, ok := data["gidNumber"].(string); ok && value != "" {
 		res.RunAsGroup = value
 		empty = false
 	}
-	if value, ok := data["runAsUser"].(string); ok {
+	if value, ok := data["runAsUser"].(string); ok && value != "" {
+		res.RunAsUser = value
+		empty = false
+	} else if value, ok := data["uidNumber"].(string); ok && value != "" {
 		res.RunAsUser = value
 		empty = false
 	}

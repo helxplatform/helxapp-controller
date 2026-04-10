@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"text/template"
@@ -53,6 +54,10 @@ var simpleDebugLogger func(string)
 var simpleInfoLogger func(string)
 var simpleErrorLogger func(error, string)
 
+// ldapURL is the base URL of the LDAP plugin service (e.g. "http://svc:8080").
+// Set from the LDAP_URL environment variable at startup.
+var ldapURL string
+
 func newSimpleDebugLogger(logger logr.Logger) func(message string) {
 	return func(message string) {
 		logger.V(1).Info(message)
@@ -76,6 +81,13 @@ func Initalize(logger logr.Logger) error {
 	simpleDebugLogger = newSimpleDebugLogger(logger)
 	simpleInfoLogger = newSimpleInfoLogger(logger)
 	simpleErrorLogger = newSimpleErrorLogger(logger)
+
+	ldapURL = os.Getenv("LDAP_URL")
+	if ldapURL != "" {
+		ldapURL = strings.TrimRight(ldapURL, "/")
+		simpleInfoLogger(fmt.Sprintf("LDAP identity source configured: %s", ldapURL))
+	}
+
 	xformer, storage, err = template_io.ParseTemplates("templates", simpleDebugLogger)
 	if err != nil {
 		simpleErrorLogger(err, "failed to initialize xformer template")
@@ -84,6 +96,27 @@ func Initalize(logger logr.Logger) error {
 		simpleInfoLogger("helxapp_operations initialized")
 		return nil
 	}
+}
+
+// resolveIdentityURL returns the URL to fetch user identity data, or ""
+// if no identity source is configured for this user.
+//
+// Priority:
+//  1. Label helx.renci.org/identity-source=ldap → LDAP_URL/users/<name>
+//  2. Legacy: user.Spec.UserHandle (explicit URL per user)
+func resolveIdentityURL(user *helxv1.HelxUser) string {
+	if source, ok := user.Labels["helx.renci.org/identity-source"]; ok && source == "ldap" {
+		if ldapURL != "" {
+			// user name is namespace-qualified in the table; use the CR name directly
+			return ldapURL + "/users/" + user.Name
+		}
+		simpleErrorLogger(fmt.Errorf("LDAP_URL not configured"), fmt.Sprintf("user %s/%s has identity-source=ldap but LDAP_URL is not set", user.Namespace, user.Name))
+		return ""
+	}
+	if user.Spec.UserHandle != nil {
+		return *user.Spec.UserHandle
+	}
+	return ""
 }
 
 func clearStorage() {
@@ -679,9 +712,9 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 
 			if instance.Spec.SecurityContext != nil {
 				system.SecurityContext = template_io.ExtractSCFromCR(instance.Spec.SecurityContext)
-			} else if user.Spec.UserHandle != nil {
-				if info, err := connect.FetchData(*user.Spec.UserHandle); err != nil {
-					simpleErrorLogger(err, fmt.Sprintf("unable to fetch user info from %s ", *user.Spec.UserHandle))
+			} else if identityURL := resolveIdentityURL(user); identityURL != "" {
+				if info, err := connect.FetchData(identityURL); err != nil {
+					simpleErrorLogger(err, fmt.Sprintf("unable to fetch user info from %s", identityURL))
 				} else {
 					system.UserInfo = info
 					system.SecurityContext = template_io.ExtractSCFromMap(info)

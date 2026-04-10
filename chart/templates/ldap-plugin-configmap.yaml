@@ -1,0 +1,18 @@
+{{- if .Values.ldapPlugin.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "helxapp-controller.ldapPlugin.fullname" . }}-config
+  labels:
+    {{- include "helxapp-controller.ldapPlugin.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+      "host": {{ .Values.ldapPlugin.config.host | quote }},
+      "port": {{ .Values.ldapPlugin.config.port }},
+      "username": {{ .Values.ldapPlugin.config.username | quote }},
+      "passwordFile": "/etc/ldap-secret/password",
+      "user_base_dn": {{ .Values.ldapPlugin.config.userBaseDN | quote }},
+      "group_base_dn": {{ .Values.ldapPlugin.config.groupBaseDN | quote }}
+    }
+{{- end }}

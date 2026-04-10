@@ -60,3 +60,31 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+LDAP plugin fully qualified name
+*/}}
+{{- define "helxapp-controller.ldapPlugin.fullname" -}}
+{{- printf "%s-ldap-plugin" (include "helxapp-controller.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+LDAP plugin selector labels
+*/}}
+{{- define "helxapp-controller.ldapPlugin.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "helxapp-controller.ldapPlugin.fullname" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: ldap-plugin
+{{- end }}
+
+{{/*
+LDAP plugin labels
+*/}}
+{{- define "helxapp-controller.ldapPlugin.labels" -}}
+helm.sh/chart: {{ include "helxapp-controller.chart" . }}
+{{ include "helxapp-controller.ldapPlugin.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}

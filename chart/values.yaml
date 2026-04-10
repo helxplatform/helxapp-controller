@@ -105,4 +105,26 @@ env:
   dbHost: "postgresql"
   dbName: "helxapp_config"
   dbPassword: ""
-  dbUser: "postgres" 
+  dbUser: "postgres"
+
+# LDAP plugin sidecar deployment (optional)
+ldapPlugin:
+  enabled: false
+  image:
+    repository: "containers.renci.org/helxplatform/helxapp-ldap-plugin"
+    pullPolicy: Always
+    tag: "latest"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+  # Name of a pre-existing Kubernetes Secret whose "password" key
+  # contains the LDAP bind password.
+  passwordSecret: ""
+  config:
+    host: "ldap"
+    port: 389
+    username: "cn=admin,dc=example,dc=org"
+    userBaseDN: "ou=users,dc=example,dc=org"
+    groupBaseDN: "ou=groups,dc=example,dc=org"

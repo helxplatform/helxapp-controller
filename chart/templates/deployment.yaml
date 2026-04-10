@@ -53,6 +53,10 @@ spec:
               value: {{ .Values.env.dbPassword }}
             - name: DB_USER
               value: {{ .Values.env.dbUser }}
+            {{- if .Values.ldapPlugin.enabled }}
+            - name: LDAP_URL
+              value: "http://{{ include "helxapp-controller.ldapPlugin.fullname" . }}:{{ .Values.ldapPlugin.service.port }}"
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz

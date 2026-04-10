@@ -1,22 +1,19 @@
-# Use the official Golang image to create a build artifact.
-#FROM golang:1.20 as builder
-FROM golang:1.20-bullseye as builder
+# Build the ldap_plugin binary
+FROM golang:1.25-bookworm AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
-# Copy local code to the container image.
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ldap_plugin .
 
-# Build the binary.
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o ldap_plugin
+# Use distroless as minimal base image
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /app/ldap_plugin .
+USER 65532:65532
 
-# Use a Docker multi-stage build to create a lean production image.
-#FROM alpine:latest
-#RUN apk --no-cache add ca-certificates
-
-#WORKDIR /root/
-#COPY --from=builder /app/ldap_plugin .
-#COPY ldap_plugin .
-
-# Run the web service on container startup.
-CMD ["/app/ldap_plugin"]
+ENTRYPOINT ["/ldap_plugin"]
