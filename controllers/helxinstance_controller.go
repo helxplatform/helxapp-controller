@@ -18,10 +18,12 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,7 +60,7 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Fetch the HelxInstance custom resource
 	helxInst := &helxv1.HelxInst{}
 	if err := r.Get(ctx, req.NamespacedName, helxInst); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			// Resource is already deleted, return without error
 			logger.Info("HelxInstance deleted", "NamespacedName", req.NamespacedName)
 			helxapp_operations.DeleteInst(instName)
@@ -70,7 +72,27 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// Check if this reconciliation needs to process changes or if it's a resync
 	if helxInst.Status.ObservedGeneration >= helxInst.Generation {
-		// No changes since last observation
+		// Even though the spec hasn't changed, verify the Deployment actually
+		// exists. A previous reconcile may have been skipped (e.g. the HelxApp
+		// was mid-reconcile) without creating the Deployment.
+		if helxInst.Status.UUID != "" {
+			exists, err := helxapp_operations.DeploymentExists(ctx, r.Client, helxInst)
+			if err != nil {
+				logger.Error(err, "failed to check deployment existence", "NamespacedName", req.NamespacedName)
+				return ctrl.Result{}, err
+			}
+			if !exists {
+				logger.Info("Deployment missing, re-running CreateDerivatives", "NamespacedName", req.NamespacedName)
+				helxapp_operations.AddInst(helxInst)
+				if err := helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx); errors.Is(err, helxapp_operations.ErrAppNotReady) {
+					return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+				} else if err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			}
+		}
+		// No changes since last observation and Deployment exists
 		logger.Info("No updates needed", "NamespacedName", req.NamespacedName)
 		helxapp_operations.AddInst(helxInst)
 		return ctrl.Result{}, nil
@@ -91,7 +113,13 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	logger.Info("Reconciling HelxInstance")
 	logger.V(1).Info(fmt.Sprintf("%# v\n", pretty.Formatter(helxInst)))
 	helxapp_operations.AddInst(helxInst)
-	return ctrl.Result{}, helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx)
+
+	err := helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx)
+	if errors.Is(err, helxapp_operations.ErrAppNotReady) {
+		logger.Info("HelxApp not ready, requeueing", "NamespacedName", req.NamespacedName)
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
+	return ctrl.Result{}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

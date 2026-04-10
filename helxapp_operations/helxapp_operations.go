@@ -25,6 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ErrAppNotReady is returned by GenerateArtifacts when the referenced HelxApp
+// exists but has not finished reconciling (generation > observedGeneration).
+// The caller should requeue after a short delay.
+var ErrAppNotReady = fmt.Errorf("HelxApp not yet reconciled")
+
 type RenderArtifact struct {
 	Render string
 	Attr   map[string]string
@@ -680,6 +685,13 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 	app := GetApp(appName)
 	user := GetUser(userName)
 
+	// If the app exists but hasn't finished reconciling, signal the caller to requeue.
+	if app != nil && app.Status.ObservedGeneration < app.Generation {
+		simpleInfoLogger(fmt.Sprintf("HelxApp %s not yet reconciled (generation=%d, observed=%d), requeueing",
+			appName, app.Generation, app.Status.ObservedGeneration))
+		return nil, ErrAppNotReady
+	}
+
 	if app != nil && user != nil {
 		containers, volumeSourceMap, error := transformApp(instance, *app, *user)
 		if error == nil && len(containers) >= 1 {
@@ -858,6 +870,22 @@ func CreateOrUpdateResource[T client.Object](
 	}
 
 	return nil
+}
+
+// DeploymentExists checks whether at least one Deployment labeled with
+// this instance's UUID exists in the namespace.
+func DeploymentExists(ctx context.Context, c client.Client, instance *helxv1.HelxInst) (bool, error) {
+	var deployments appsv1.DeploymentList
+
+	listOpts := []client.ListOption{
+		client.InNamespace(instance.ObjectMeta.Namespace),
+		client.MatchingLabels{"helx.renci.org/id": instance.Status.UUID},
+	}
+
+	if err := c.List(ctx, &deployments, listOpts...); err != nil {
+		return false, fmt.Errorf("failed to list deployments: %v", err)
+	}
+	return len(deployments.Items) > 0, nil
 }
 
 func DeleteDeployments(ctx context.Context, c client.Client, instance *helxv1.HelxInst) error {

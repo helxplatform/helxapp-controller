@@ -2272,3 +2272,89 @@ func TestGenerateArtifacts_NoAmbassadorAnnotation(t *testing.T) {
 		t.Errorf("service should NOT contain ambassador annotation when not configured, got:\n%s", svcRender)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Bug 1: GenerateArtifacts returns ErrAppNotReady when app is mid-reconcile
+// ---------------------------------------------------------------------------
+
+func TestGenerateArtifacts_AppNotReady(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	// Simulate a spec update: generation=2 but observedGeneration=1 (app mid-reconcile)
+	app.Generation = 2
+	app.Status.ObservedGeneration = 1
+	AddApp(app)
+
+	user := makeUser("ns", "alice", nil)
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-notready")
+	AddInst(inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err == nil {
+		t.Fatal("expected ErrAppNotReady, got nil")
+	}
+	if err != ErrAppNotReady {
+		t.Fatalf("expected ErrAppNotReady, got %v", err)
+	}
+	if artifacts != nil {
+		t.Error("expected nil artifacts when app is not ready")
+	}
+}
+
+func TestGenerateArtifacts_AppReadyAfterReconcile(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	// App is fully reconciled: generation == observedGeneration
+	app.Generation = 2
+	app.Status.ObservedGeneration = 2
+	AddApp(app)
+
+	user := makeUser("ns", "alice", nil)
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-ready")
+	AddInst(inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts, got nil")
+	}
+	if artifacts.Deployment.Render == "" {
+		t.Error("expected non-empty deployment render")
+	}
+}
+
+func TestGenerateArtifacts_AppGenZeroAlwaysReady(t *testing.T) {
+	// When generation and observedGeneration are both 0 (default), the app
+	// should be treated as ready — this is the common case for a freshly
+	// created app that hasn't been updated.
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	// generation=0, observedGeneration=0 (defaults)
+	AddApp(app)
+
+	user := makeUser("ns", "alice", nil)
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-gen0")
+	AddInst(inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatalf("expected no error for gen=0, got %v", err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts for gen=0, got nil")
+	}
+}
