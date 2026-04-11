@@ -2274,10 +2274,10 @@ func TestGenerateArtifacts_NoAmbassadorAnnotation(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Bug 1: GenerateArtifacts returns ErrAppNotReady when app is mid-reconcile
+// Bug 1: IsAppReady detects when app is mid-reconcile
 // ---------------------------------------------------------------------------
 
-func TestGenerateArtifacts_AppNotReady(t *testing.T) {
+func TestIsAppReady_NotReady(t *testing.T) {
 	resetTables()
 	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
 		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
@@ -2287,21 +2287,38 @@ func TestGenerateArtifacts_AppNotReady(t *testing.T) {
 	app.Status.ObservedGeneration = 1
 	AddApp(app)
 
-	user := makeUser("ns", "alice", nil)
-	AddUser(user)
-
 	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-notready")
 	AddInst(inst)
 
-	artifacts, err := GenerateArtifacts(inst)
-	if err == nil {
-		t.Fatal("expected ErrAppNotReady, got nil")
+	if IsAppReady(inst) {
+		t.Error("expected IsAppReady=false when app generation > observedGeneration")
 	}
-	if err != ErrAppNotReady {
-		t.Fatalf("expected ErrAppNotReady, got %v", err)
+}
+
+func TestIsAppReady_Ready(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	app.Generation = 2
+	app.Status.ObservedGeneration = 2
+	AddApp(app)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-ready2")
+	AddInst(inst)
+
+	if !IsAppReady(inst) {
+		t.Error("expected IsAppReady=true when app generation == observedGeneration")
 	}
-	if artifacts != nil {
-		t.Error("expected nil artifacts when app is not ready")
+}
+
+func TestIsAppReady_MissingApp(t *testing.T) {
+	resetTables()
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-noapp")
+	AddInst(inst)
+
+	if !IsAppReady(inst) {
+		t.Error("expected IsAppReady=true when app is missing (handled elsewhere)")
 	}
 }
 
@@ -2450,5 +2467,247 @@ func TestGenerateArtifacts_NoLDAPConfigMapWithoutLabel(t *testing.T) {
 	}
 	if strings.Contains(render, "USER_IDENTITY") {
 		t.Error("deployment should NOT contain USER_IDENTITY without ldap label")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Probe tests
+// ---------------------------------------------------------------------------
+
+func TestTransformProbe_Nil(t *testing.T) {
+	result := transformProbe(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %+v", result)
+	}
+}
+
+func TestTransformProbe_HTTPGet(t *testing.T) {
+	p := &helxv1.Probe{
+		HTTPGet: &helxv1.HTTPGetAction{
+			Path:   "/healthz",
+			Port:   8080,
+			Scheme: "HTTP",
+			HTTPHeaders: map[string]string{
+				"X-Custom": "value",
+			},
+		},
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       30,
+		FailureThreshold:    3,
+	}
+	result := transformProbe(p)
+	if result == nil {
+		t.Fatal("expected non-nil probe")
+	}
+	if result.HTTPGet == nil {
+		t.Fatal("expected HTTPGet action")
+	}
+	if result.HTTPGet.Path != "/healthz" {
+		t.Errorf("Path = %q, want /healthz", result.HTTPGet.Path)
+	}
+	if result.HTTPGet.Port != 8080 {
+		t.Errorf("Port = %d, want 8080", result.HTTPGet.Port)
+	}
+	if result.HTTPGet.HttpHeaders["X-Custom"] != "value" {
+		t.Errorf("HttpHeaders missing X-Custom")
+	}
+	if result.InitialDelaySeconds != 10 {
+		t.Errorf("InitialDelaySeconds = %d, want 10", result.InitialDelaySeconds)
+	}
+	if result.PeriodSeconds != 30 {
+		t.Errorf("PeriodSeconds = %d, want 30", result.PeriodSeconds)
+	}
+	if result.FailureThreshold != 3 {
+		t.Errorf("FailureThreshold = %d, want 3", result.FailureThreshold)
+	}
+}
+
+func TestTransformProbe_Exec(t *testing.T) {
+	p := &helxv1.Probe{
+		Exec: &helxv1.ExecAction{Command: []string{"cat", "/tmp/healthy"}},
+	}
+	result := transformProbe(p)
+	if result == nil {
+		t.Fatal("expected non-nil probe")
+	}
+	if result.Exec == nil {
+		t.Fatal("expected Exec action")
+	}
+	if len(result.Exec.Command) != 2 || result.Exec.Command[0] != "cat" {
+		t.Errorf("Command = %v, want [cat /tmp/healthy]", result.Exec.Command)
+	}
+}
+
+func TestTransformProbe_TCPSocket(t *testing.T) {
+	p := &helxv1.Probe{
+		TCPSocket: &helxv1.TCPSocketAction{Port: 3306},
+	}
+	result := transformProbe(p)
+	if result == nil {
+		t.Fatal("expected non-nil probe")
+	}
+	if result.TCPSocket == nil {
+		t.Fatal("expected TCPSocket action")
+	}
+	if result.TCPSocket.Port != 3306 {
+		t.Errorf("Port = %d, want 3306", result.TCPSocket.Port)
+	}
+}
+
+func TestGenerateArtifacts_WithHTTPProbes(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			LivenessProbe: &helxv1.Probe{
+				HTTPGet: &helxv1.HTTPGetAction{
+					Path: "/healthz",
+					Port: 80,
+				},
+				InitialDelaySeconds: 5,
+				PeriodSeconds:       10,
+			},
+			ReadinessProbe: &helxv1.Probe{
+				HTTPGet: &helxv1.HTTPGetAction{
+					Path: "/readyz",
+					Port: 80,
+				},
+				PeriodSeconds: 5,
+			},
+		},
+	})
+
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-probes")
+	setupGraphForArtifacts(app, user, inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+
+	if !strings.Contains(render, "livenessProbe") {
+		t.Error("deployment should contain livenessProbe")
+	}
+	if !strings.Contains(render, "readinessProbe") {
+		t.Error("deployment should contain readinessProbe")
+	}
+	if !strings.Contains(render, "/healthz") {
+		t.Error("deployment should contain /healthz path")
+	}
+	if !strings.Contains(render, "/readyz") {
+		t.Error("deployment should contain /readyz path")
+	}
+	if !strings.Contains(render, "initialDelaySeconds: 5") {
+		t.Error("deployment should contain initialDelaySeconds")
+	}
+}
+
+func TestGenerateArtifacts_WithExecProbe(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			LivenessProbe: &helxv1.Probe{
+				Exec: &helxv1.ExecAction{Command: []string{"cat", "/tmp/healthy"}},
+			},
+		},
+	})
+
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-exec-probe")
+	setupGraphForArtifacts(app, user, inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+
+	if !strings.Contains(render, "livenessProbe") {
+		t.Error("deployment should contain livenessProbe")
+	}
+	if !strings.Contains(render, "cat") {
+		t.Error("deployment should contain exec command")
+	}
+}
+
+func TestGenerateArtifacts_WithTCPProbe(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+			ReadinessProbe: &helxv1.Probe{
+				TCPSocket: &helxv1.TCPSocketAction{Port: 80},
+			},
+		},
+	})
+
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-tcp-probe")
+	setupGraphForArtifacts(app, user, inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+
+	if !strings.Contains(render, "readinessProbe") {
+		t.Error("deployment should contain readinessProbe")
+	}
+	if !strings.Contains(render, "tcpSocket") {
+		t.Error("deployment should contain tcpSocket")
+	}
+}
+
+func TestGenerateArtifacts_NoProbes(t *testing.T) {
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{
+			Name:    "main",
+			Image:   "nginx",
+			Command: []string{"nginx"},
+			Ports:   []helxv1.PortMap{{ContainerPort: 80, Port: 80}},
+		},
+	})
+
+	user := makeUser("ns", "alice", nil)
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-no-probes")
+	setupGraphForArtifacts(app, user, inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts")
+	}
+	render := artifacts.Deployment.Render
+
+	if strings.Contains(render, "livenessProbe") {
+		t.Error("deployment should NOT contain livenessProbe when not configured")
+	}
+	if strings.Contains(render, "readinessProbe") {
+		t.Error("deployment should NOT contain readinessProbe when not configured")
 	}
 }

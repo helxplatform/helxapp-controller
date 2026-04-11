@@ -36,6 +36,25 @@ Each `Service` entry carries:
 | `securityContext` | Per-container UID/GID/FSGroup/supplementalGroups |
 | `volumes` | Map of `volumeId → volume-source string` (see Volume DSL below) |
 | `ambassador` | Optional Ambassador mapping config (`ambassadorId`, `prefix`, `proxyRewrite`). When present, the generated Service gets a `getambassador.io/config` annotation. The `prefix` field supports Go template expressions and defaults to `/private/<AppClassName>/<UserName>/<UUID>/`. |
+| `livenessProbe` | Optional liveness probe (`exec`, `httpGet`, or `tcpSocket` + timing fields) |
+| `readinessProbe` | Optional readiness probe (same structure as `livenessProbe`) |
+
+#### Probe structure
+
+Each probe supports one action type and optional timing fields:
+
+```yaml
+livenessProbe:
+  httpGet:                    # or exec: {command: [...]}, or tcpSocket: {port: N}
+    path: /healthz
+    port: 8080
+    scheme: HTTP              # optional, default HTTP
+    httpHeaders:              # optional
+      X-Custom: value
+  initialDelaySeconds: 10     # optional
+  periodSeconds: 30           # optional
+  failureThreshold: 3         # optional
+```
 
 ### HelxInst — the instance request
 
@@ -46,6 +65,7 @@ Key fields (`HelxInstSpec`):
 | Field | Purpose |
 |-------|---------|
 | `appName` | Name (or `namespace/name`) of the `HelxApp` to instantiate |
+| `referenceID` | Optional external correlation ID; exposed as `ReferenceID` env var and template variable |
 | `userName` | Name (or `namespace/name`) of the `HelxUser` who owns this instance |
 | `environment` | Instance-level env vars (`map[string]string`); highest precedence in the three-way merge (app < user < inst) |
 | `secretsFrom` | List of Secret names; keys injected as env vars via `envFrom[].secretRef` (merged with app/user) |
@@ -62,11 +82,13 @@ Status:
 
 ### HelxUser — the user record
 
-A `HelxUser` represents a platform user. It can carry user-level environment variables and volumes that apply across all instances for that user, as well as a `userHandle` URL for security context discovery.
+A `HelxUser` represents a platform user. It can carry user-level environment variables and volumes that apply across all instances for that user.
+
+Identity resolution is controlled by the label `helx.renci.org/identity-source` on the HelxUser metadata. When set to `ldap`, the controller automatically queries the LDAP plugin for security context, group membership, and posixAccount fields. The legacy `userHandle` URL is still supported as a fallback.
 
 | Field | Purpose |
 |-------|---------|
-| `userHandle` | Optional URL; the controller performs an HTTP GET and parses the JSON response for `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups` |
+| `userHandle` | (Legacy) Optional URL; the controller performs an HTTP GET and parses the JSON response for `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups`. Superseded by the `identity-source` label. |
 | `environment` | User-level env vars (`map[string]string`); merged between app-level and instance-level (app < user < inst precedence) |
 | `secretsFrom` | List of Secret names; keys injected as env vars via `envFrom[].secretRef` (merged with app/inst) |
 | `configMapsFrom` | List of ConfigMap names; keys injected as env vars via `envFrom[].configMapRef` (merged with app/inst) |
@@ -104,10 +126,16 @@ User creates/updates HelxInst
 HelxInstReconciler.Reconcile()
   ├─ Fetch HelxInst from API server
   ├─ If deleted → DeleteInst() → return
-  ├─ If ObservedGeneration >= Generation → AddInst() (resync graph only) → return
+  ├─ If ObservedGeneration >= Generation:
+  │    ├─ DeploymentExists()? → AddInst(), log "No updates needed", return
+  │    └─ Deployment missing → AddInst(), IsAppReady()?
+  │         ├─ Not ready → requeue after 2s
+  │         └─ Ready → CreateDerivatives() (recovery path)
   ├─ Assign UUID if new
   ├─ AddInst() → updates graph, no returned insts
-  ├─ CreateDerivatives(helxInst, ...)
+  ├─ IsAppReady()?
+  │    ├─ Not ready → requeue after 2s
+  │    └─ Ready → CreateDerivatives(helxInst, ...)
   └─ defer: update Status.ObservedGeneration
 ```
 
@@ -134,6 +162,8 @@ HelxUserReconciler.Reconcile()
 
 **Invariant**: `CreateDerivatives` only produces output when both the `HelxApp` and `HelxUser` referenced by the instance are present in the graph.
 
+**Race condition guard**: Before calling `CreateDerivatives`, the HelxInst reconciler calls `IsAppReady()` to check whether the HelxApp has finished reconciling (`generation == observedGeneration`). If not, it requeues after 2 seconds. This check is only performed in the HelxInst reconciler — the HelxApp and HelxUser reconcilers call `CreateDerivatives` directly during their own reconcile loop (where the generation update is deferred). Additionally, the "no updates needed" path verifies the Deployment actually exists in the cluster before short-circuiting, recovering from any earlier skipped creation.
+
 ---
 
 ## Artifact Generation Pipeline
@@ -159,6 +189,7 @@ Both must be non-nil; otherwise `GenerateArtifacts` returns `(nil, nil)`.
 - **Resources**: `instance.Spec.Resources[serviceName]` provides actual `Requests` and `Limits`.
 - **Image**: split at first comma — the image reference, then `key[=value]` option flags (e.g. `Always` sets `imagePullPolicy: Always`).
 - **Security context**: copied from the `service.SecurityContext` field.
+- **Probes**: `service.LivenessProbe` and `service.ReadinessProbe` are transformed via `transformProbe()` from CRD types to template types and passed through to the container template.
 
 ### Step 3 — Build the System context
 
@@ -171,15 +202,22 @@ system := template_io.System{
     UserName:     ...,
     Containers:   containers,    // regular containers
     Volumes:      volumes,       // all unique volume sources
-    Environment:  systemEnv,     // GUID, USER, HOST, APP_CLASS_NAME, APP_NAME, INSTANCE_NAME
+    Environment:  systemEnv,     // ReferenceID, USER, HOST, APP_CLASS_NAME, APP_NAME, INSTANCE_NAME (+ USER_IDENTITY when LDAP)
     SecurityContext: ...,        // resolved below
 }
 ```
 
 **Security context resolution** (priority order):
 1. `instance.Spec.SecurityContext` — explicit per-instance override
-2. `user.Spec.UserHandle` URL — HTTP GET → JSON with `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups`
-3. No security context (omitted from pod spec)
+2. `helx.renci.org/identity-source: ldap` label on HelxUser — controller calls `$LDAP_URL/users/<name>` and parses the JSON response
+3. `user.Spec.UserHandle` URL — legacy HTTP GET → JSON with `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups`
+4. No security context (omitted from pod spec)
+
+`ExtractSCFromMap` supports fallbacks from the LDAP response: if `runAsUser` is empty, `uidNumber` is used; if `runAsGroup` is empty, `gidNumber` is used.
+
+**LDAP identity side effects** — when `identity-source: ldap` is active:
+- `USER_IDENTITY=ldap` env var is added to the system environment
+- If `LDAP_CONFIGMAP` is configured, a `ldap-config` volume (configmap) is injected with 3 subPath mounts on every container: `/etc/ldap.conf`, `/etc/libnss-ldap.conf` (both from key `libnss-ldap.conf`), and `/etc/nsswitch.conf` (from key `nsswitch.conf`). This enables libnss-ldap inside the application pod.
 
 ### Step 4 — Template rendering
 
@@ -281,6 +319,7 @@ Objects with `helx.renci.org/retain: "true"` are excluded from explicit deletion
 | `helx.renci.org/app-class-name` | App class | Pod template |
 | `helx.renci.org/instance-name` | Instance name | Pod template |
 | `helx.renci.org/retain` | `"true"` | PVCs that should survive deletion |
+| `helx.renci.org/identity-source` | `"ldap"` | HelxUser — triggers LDAP identity resolution and libnss config injection |
 
 ---
 
@@ -308,4 +347,4 @@ kubectl apply HelxApp     kubectl apply HelxUser    kubectl apply HelxInst
                                                         Kubernetes schedules Pod
 ```
 
-If `HelxInst` arrives before `HelxApp` or `HelxUser`, `GenerateArtifacts` returns nil and no workload is created. When the missing resource later arrives, its reconciler calls `AddApp`/`AddUser`, receives the waiting instance in the returned `instList`, and calls `CreateDerivatives` to complete the workload.
+If `HelxInst` arrives before `HelxApp` or `HelxUser`, `GenerateArtifacts` returns nil and no workload is created. When the missing resource later arrives, its reconciler calls `AddApp`/`AddUser`, receives the waiting instance in the returned `instList`, and calls `CreateDerivatives` to complete the workload. If the `HelxApp` exists but is mid-reconcile, the HelxInst reconciler's `IsAppReady` check catches this and requeues after 2 seconds.

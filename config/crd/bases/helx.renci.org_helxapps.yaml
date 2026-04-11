@@ -79,6 +79,61 @@ spec:
                       type: string
                     init:
                       type: boolean
+                    livenessProbe:
+                      description: Probe describes a health check to be performed
+                        against a container.
+                      properties:
+                        exec:
+                          description: One of Exec, HTTPGet, or TCPSocket must be
+                            specified.
+                          properties:
+                            command:
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - command
+                          type: object
+                        failureThreshold:
+                          format: int32
+                          type: integer
+                        httpGet:
+                          description: HTTPGetAction describes an HTTP GET request
+                            health check.
+                          properties:
+                            httpHeaders:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            path:
+                              type: string
+                            port:
+                              format: int32
+                              type: integer
+                            scheme:
+                              type: string
+                          required:
+                          - path
+                          - port
+                          type: object
+                        initialDelaySeconds:
+                          description: Timing fields.
+                          format: int32
+                          type: integer
+                        periodSeconds:
+                          format: int32
+                          type: integer
+                        tcpSocket:
+                          description: TCPSocketAction describes a TCP port health
+                            check.
+                          properties:
+                            port:
+                              format: int32
+                              type: integer
+                          required:
+                          - port
+                          type: object
+                      type: object
                     name:
                       type: string
                     ports:
@@ -96,6 +151,61 @@ spec:
                         - containerPort
                         type: object
                       type: array
+                    readinessProbe:
+                      description: Probe describes a health check to be performed
+                        against a container.
+                      properties:
+                        exec:
+                          description: One of Exec, HTTPGet, or TCPSocket must be
+                            specified.
+                          properties:
+                            command:
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - command
+                          type: object
+                        failureThreshold:
+                          format: int32
+                          type: integer
+                        httpGet:
+                          description: HTTPGetAction describes an HTTP GET request
+                            health check.
+                          properties:
+                            httpHeaders:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            path:
+                              type: string
+                            port:
+                              format: int32
+                              type: integer
+                            scheme:
+                              type: string
+                          required:
+                          - path
+                          - port
+                          type: object
+                        initialDelaySeconds:
+                          description: Timing fields.
+                          format: int32
+                          type: integer
+                        periodSeconds:
+                          format: int32
+                          type: integer
+                        tcpSocket:
+                          description: TCPSocketAction describes a TCP port health
+                            check.
+                          properties:
+                            port:
+                              format: int32
+                              type: integer
+                          required:
+                          - port
+                          type: object
+                      type: object
                     resourceBounds:
                       additionalProperties:
                         description: ServicePort represents a single port for a service

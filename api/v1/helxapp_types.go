@@ -55,6 +55,38 @@ type Service struct {
 	SecurityContext *SecurityContext            `json:"securityContext,omitempty"`
 	Volumes         map[string]string           `json:"volumes,omitempty"`
 	Ambassador      *AmbassadorMapping          `json:"ambassador,omitempty"`
+	LivenessProbe   *Probe                      `json:"livenessProbe,omitempty"`
+	ReadinessProbe  *Probe                      `json:"readinessProbe,omitempty"`
+}
+
+// Probe describes a health check to be performed against a container.
+type Probe struct {
+	// One of Exec, HTTPGet, or TCPSocket must be specified.
+	Exec      *ExecAction      `json:"exec,omitempty"`
+	HTTPGet   *HTTPGetAction   `json:"httpGet,omitempty"`
+	TCPSocket *TCPSocketAction `json:"tcpSocket,omitempty"`
+	// Timing fields.
+	InitialDelaySeconds int32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       int32 `json:"periodSeconds,omitempty"`
+	FailureThreshold    int32 `json:"failureThreshold,omitempty"`
+}
+
+// ExecAction describes a "run in container" action.
+type ExecAction struct {
+	Command []string `json:"command"`
+}
+
+// HTTPGetAction describes an HTTP GET request health check.
+type HTTPGetAction struct {
+	Path        string            `json:"path"`
+	Port        int32             `json:"port"`
+	Scheme      string            `json:"scheme,omitempty"`
+	HTTPHeaders map[string]string `json:"httpHeaders,omitempty"`
+}
+
+// TCPSocketAction describes a TCP port health check.
+type TCPSocketAction struct {
+	Port int32 `json:"port"`
 }
 
 // ServicePort represents a single port for a service in a HeLxApp

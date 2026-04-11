@@ -5,16 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-make build              # Compile manager binary to bin/manager
-make test               # Run tests with coverage (generates cover.out)
-make run                # Run controller locally against current kubeconfig
-make manifests          # Regenerate CRD and RBAC manifests (run after changing api/v1/*_types.go)
-make generate           # Regenerate DeepCopy methods (run after changing api/v1/*_types.go)
-make fmt                # gofmt
-make vet                # go vet
-make docker-build       # Build container image (runs tests first)
-make install            # Install CRDs into the current cluster
-make deploy             # Deploy controller to the current cluster
+make build                    # Compile manager binary to bin/manager
+make test                     # Run tests with coverage (generates cover.out)
+make run                      # Run controller locally against current kubeconfig
+make manifests                # Regenerate CRD and RBAC manifests (run after changing api/v1/*_types.go)
+make generate                 # Regenerate DeepCopy methods (run after changing api/v1/*_types.go)
+make fmt                      # gofmt
+make vet                      # go vet
+make docker-build             # Build controller container image (runs tests first)
+make docker-build-ldap-plugin # Build LDAP plugin container image
+make install                  # Install CRDs into the current cluster
+make deploy                   # Deploy controller to the current cluster
+make create-ldap-secret       # Create LDAP bind-password K8s Secret (LDAP_PASSWORD=<pw>)
 ```
 
 Run a single test:
@@ -28,9 +30,9 @@ Tests use ginkgo v2 + gomega. The controllers test suite uses envtest (local API
 
 This is a Kubernetes operator (controller-runtime/Kubebuilder) managing three CRDs in API group `helx.renci.org/v1`:
 
-- **HelxApp** — application template (images, ports, env, volumes, security context, optional Ambassador mapping)
-- **HelxInst** — per-user instance request referencing an app + user; triggers workload creation. Has its own `environment` map — highest precedence in the three-way merge (app < user < inst).
-- **HelxUser** — user record; `userHandle` URL fetches security context (uid/gid) via HTTP. Has `environment` and `volumes` fields merged with app/inst (app < user < inst precedence).
+- **HelxApp** — application template (images, ports, env, volumes, security context, probes, optional Ambassador mapping)
+- **HelxInst** — per-user instance request referencing an app + user; triggers workload creation. Has its own `environment` map — highest precedence in the three-way merge (app < user < inst). Has `referenceID` for external correlation.
+- **HelxUser** — user record; supports LDAP identity resolution via label `helx.renci.org/identity-source: ldap`, or legacy `userHandle` URL. Has `environment` and `volumes` fields merged with app/inst (app < user < inst precedence).
 
 The three CRDs arrive independently and in any order. The controller maintains an **in-memory relational graph** (`helxapp_operations` package) with bidirectional associations. Workload objects (Deployment, PVCs, Services) are only created when a complete triple (app + user + instance) exists. If a resource arrives late, the reconciler for the arriving resource picks up waiting instances and completes them.
 
@@ -61,11 +63,28 @@ Volumes use a mini-language: `[scheme://]src:mountPath[#subPath][,option=value..
 - Options: `retain`, `rwx`/`rox`/`rwop`, `size`, `storageClass`, `ro`
 - Secret/configmap volumes mount pre-existing K8s resources (no PVC created)
 
-### Security context priority
+### Health probes
 
+Each `Service` in a `HelxApp` can define `livenessProbe` and `readinessProbe`. Supported probe types:
+- `exec` — runs a command inside the container
+- `httpGet` — HTTP GET with path, port, optional scheme and headers
+- `tcpSocket` — TCP connection check on a port
+
+Timing fields: `initialDelaySeconds`, `periodSeconds`, `failureThreshold`.
+
+### Identity source and security context
+
+Priority for security context resolution:
 1. `HelxInst.Spec.SecurityContext` (explicit override)
-2. HTTP GET to `HelxUser.Spec.UserHandle` URL
-3. Omitted
+2. `helx.renci.org/identity-source: ldap` label on `HelxUser` — controller calls `LDAP_URL/users/<name>` automatically
+3. Legacy: `HelxUser.Spec.UserHandle` URL (explicit URL per user)
+4. Omitted
+
+When LDAP identity is active (`identity-source: ldap`), the controller also:
+- Sets env var `USER_IDENTITY=ldap` on the deployment
+- Injects libnss-ldap ConfigMap volume with 3 mounts (`/etc/ldap.conf`, `/etc/libnss-ldap.conf`, `/etc/nsswitch.conf`) if `LDAP_CONFIGMAP` is configured
+
+The `ExtractSCFromMap` function supports fallbacks: `uidNumber` → `runAsUser`, `gidNumber` → `runAsGroup`.
 
 ## Important Patterns
 

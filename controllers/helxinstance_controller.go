@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -44,15 +43,6 @@ type HelxInstReconciler struct {
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinsts/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=helx.renci.org,namespace=jeffw,resources=helxinsts/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the HelxInstance object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	instName := req.NamespacedName.String()
@@ -61,7 +51,6 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	helxInst := &helxv1.HelxInst{}
 	if err := r.Get(ctx, req.NamespacedName, helxInst); err != nil {
 		if k8serrors.IsNotFound(err) {
-			// Resource is already deleted, return without error
 			logger.Info("HelxInstance deleted", "NamespacedName", req.NamespacedName)
 			helxapp_operations.DeleteInst(instName)
 			return ctrl.Result{}, nil
@@ -84,9 +73,10 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			if !exists {
 				logger.Info("Deployment missing, re-running CreateDerivatives", "NamespacedName", req.NamespacedName)
 				helxapp_operations.AddInst(helxInst)
-				if err := helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx); errors.Is(err, helxapp_operations.ErrAppNotReady) {
+				if !helxapp_operations.IsAppReady(helxInst) {
 					return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
-				} else if err != nil {
+				}
+				if err := helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx); err != nil {
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{}, nil
@@ -114,12 +104,13 @@ func (r *HelxInstReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	logger.V(1).Info(fmt.Sprintf("%# v\n", pretty.Formatter(helxInst)))
 	helxapp_operations.AddInst(helxInst)
 
-	err := helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx)
-	if errors.Is(err, helxapp_operations.ErrAppNotReady) {
+	// If the app is mid-reconcile, requeue rather than proceeding with stale data
+	if !helxapp_operations.IsAppReady(helxInst) {
 		logger.Info("HelxApp not ready, requeueing", "NamespacedName", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	}
-	return ctrl.Result{}, err
+
+	return ctrl.Result{}, helxapp_operations.CreateDerivatives(helxInst, r.Client, r.Scheme, req, ctx)
 }
 
 // SetupWithManager sets up the controller with the Manager.

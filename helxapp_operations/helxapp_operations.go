@@ -25,11 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ErrAppNotReady is returned by GenerateArtifacts when the referenced HelxApp
-// exists but has not finished reconciling (generation > observedGeneration).
-// The caller should requeue after a short delay.
-var ErrAppNotReady = fmt.Errorf("HelxApp not yet reconciled")
-
 type RenderArtifact struct {
 	Render string
 	Attr   map[string]string
@@ -131,6 +126,23 @@ func resolveIdentityURL(user *helxv1.HelxUser) string {
 		return *user.Spec.UserHandle
 	}
 	return ""
+}
+
+// IsAppReady checks whether the HelxApp referenced by this instance has
+// finished reconciling (generation == observedGeneration). Returns true if
+// the app is ready or doesn't exist yet (missing app is handled elsewhere).
+func IsAppReady(instance *helxv1.HelxInst) bool {
+	appName := GetAppNameFromInst(instance)
+	app := GetApp(appName)
+	if app == nil {
+		return true // missing app — GenerateArtifacts will return nil, not an error
+	}
+	if app.Status.ObservedGeneration < app.Generation {
+		simpleInfoLogger(fmt.Sprintf("HelxApp %s not yet reconciled (generation=%d, observed=%d)",
+			appName, app.Generation, app.Status.ObservedGeneration))
+		return false
+	}
+	return true
 }
 
 func clearStorage() {
@@ -579,6 +591,32 @@ func mergeEnvironment(appEnv, instEnv map[string]string) map[string]string {
 	return merged
 }
 
+func transformProbe(p *helxv1.Probe) *template_io.Probe {
+	if p == nil {
+		return nil
+	}
+	probe := &template_io.Probe{
+		InitialDelaySeconds: p.InitialDelaySeconds,
+		PeriodSeconds:       p.PeriodSeconds,
+		FailureThreshold:    p.FailureThreshold,
+	}
+	if p.Exec != nil {
+		probe.Exec = &template_io.ExecAction{Command: p.Exec.Command}
+	}
+	if p.HTTPGet != nil {
+		probe.HTTPGet = &template_io.HTTPGetAction{
+			Path:        p.HTTPGet.Path,
+			Port:        p.HTTPGet.Port,
+			Scheme:      p.HTTPGet.Scheme,
+			HttpHeaders: p.HTTPGet.HTTPHeaders,
+		}
+	}
+	if p.TCPSocket != nil {
+		probe.TCPSocket = &template_io.TCPSocketAction{Port: p.TCPSocket.Port}
+	}
+	return probe
+}
+
 // ServiceProcessor processes the services from the application spec and returns containers.
 // Environment merge precedence: HelxApp service env < HelxUser env < HelxInst env.
 // Volumes from HelxUser are added to every container alongside the per-service app volumes.
@@ -643,6 +681,8 @@ func transformApp(instance *helxv1.HelxInst, app helxv1.HelxApp, user helxv1.Hel
 			SecurityContext: template_io.ExtractSCFromCR(service.SecurityContext),
 			VolumeMounts:    volumeList,
 			Ambassador:      ambassador,
+			LivenessProbe:   transformProbe(service.LivenessProbe),
+			ReadinessProbe:  transformProbe(service.ReadinessProbe),
 		}
 
 		containers = append(containers, container)
@@ -693,13 +733,6 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 
 	app := GetApp(appName)
 	user := GetUser(userName)
-
-	// If the app exists but hasn't finished reconciling, signal the caller to requeue.
-	if app != nil && app.Status.ObservedGeneration < app.Generation {
-		simpleInfoLogger(fmt.Sprintf("HelxApp %s not yet reconciled (generation=%d, observed=%d), requeueing",
-			appName, app.Generation, app.Status.ObservedGeneration))
-		return nil, ErrAppNotReady
-	}
 
 	if app != nil && user != nil {
 		containers, volumeSourceMap, error := transformApp(instance, *app, *user)

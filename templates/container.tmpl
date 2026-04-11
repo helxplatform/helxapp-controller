@@ -76,73 +76,73 @@ volumeMounts:
 {{- end }}
 
 {{- define "containerLivenessProbe" }}
-{{- if .Container.LivenessProbe }}
+{{- if .container.LivenessProbe }}
   livenessProbe:
-    {{ if and .Container.LivenessProbe.Exec .Container.LivenessProbe.Exec.Command }}
+    {{ if and .container.LivenessProbe.Exec .container.LivenessProbe.Exec.Command }}
     exec:
       command:
-        {{ range $cmd := .Container.LivenessProbe.Exec.Command }}
+        {{ range $cmd := .container.LivenessProbe.Exec.Command }}
         - {{ $cmd }}
         {{ end }}
-    {{ else if and .Container.LivenessProbe.HTTPGet .Container.LivenessProbe.HTTPGet.Path .Container.LivenessProbe.HTTPGet.Port }}
+    {{ else if and .container.LivenessProbe.HTTPGet .container.LivenessProbe.HTTPGet.Path .container.LivenessProbe.HTTPGet.Port }}
     httpGet:
-      path: {{ .Container.LivenessProbe.HTTPGet.Path }}
-      port: {{ .Container.LivenessProbe.HTTPGet.Port }}
-      {{ if .Container.LivenessProbe.HTTPGet.HttpHeaders }}
+      path: {{ .container.LivenessProbe.HTTPGet.Path }}
+      port: {{ .container.LivenessProbe.HTTPGet.Port }}
+      {{ if .container.LivenessProbe.HTTPGet.HttpHeaders }}
       httpHeaders:
-        {{ range $name,$value := .Container.LivenessProbe.HTTPGet.HttpHeaders }}
+        {{ range $name,$value := .container.LivenessProbe.HTTPGet.HttpHeaders }}
         - name: {{ $name }}
           value: {{ $value }}
         {{ end }}
       {{ end }}
-    {{ else if .Container.LivenessProbe.TCPSocket.Port }}
+    {{ else if .container.LivenessProbe.TCPSocket.Port }}
     tcpSocket:
-      port: {{ .Container.LivenessProbe.TCPSocket.Port }}
+      port: {{ .container.LivenessProbe.TCPSocket.Port }}
     {{ end }}
-    {{ if .Container.LivenessProbe.InitialDelaySeconds }}
-    initialDelaySeconds: {{ .Container.LivenessProbe.InitialDelaySeconds }}
+    {{ if .container.LivenessProbe.InitialDelaySeconds }}
+    initialDelaySeconds: {{ .container.LivenessProbe.InitialDelaySeconds }}
     {{ end }}
-    {{ if .Container.LivenessProbe.PeriodSeconds }}
-    periodSeconds: {{ .Container.LivenessProbe.PeriodSeconds }}
+    {{ if .container.LivenessProbe.PeriodSeconds }}
+    periodSeconds: {{ .container.LivenessProbe.PeriodSeconds }}
     {{ end }}
-    {{ if .Container.LivenessProbe.FailureThreshold }}
-    failureThreshold: {{ .Container.LivenessProbe.FailureThreshold }}
+    {{ if .container.LivenessProbe.FailureThreshold }}
+    failureThreshold: {{ .container.LivenessProbe.FailureThreshold }}
     {{ end }}
 {{- end }}
 {{- end }}
 
 {{define "containerReadinessProbe"}}
-{{- if .Container.ReadinessProbe }}
+{{- if .container.ReadinessProbe }}
   readinessProbe:
-    {{ if and .Container.ReadinessProbe.Exec .Container.ReadinessProbe.Exec.Command }}
+    {{ if and .container.ReadinessProbe.Exec .container.ReadinessProbe.Exec.Command }}
     exec:
       command:
-        {{ range $cmd := .Container.ReadinessProbe.Exec.Command }}
+        {{ range $cmd := .container.ReadinessProbe.Exec.Command }}
         - {{ $cmd }}
         {{ end }}
-    {{ else if and .Container.ReadinessProbe.HTTPGet .Container.ReadinessProbe.HTTPGet.Path .Container.ReadinessProbe.HTTPGet.Port }}
+    {{ else if and .container.ReadinessProbe.HTTPGet .container.ReadinessProbe.HTTPGet.Path .container.ReadinessProbe.HTTPGet.Port }}
     httpGet:
-      path: {{ .Container.ReadinessProbe.HTTPGet.Path  }}
-      port: {{ .Container.ReadinessProbe.HTTPGet.Port }}
-      {{ if .Container.ReadinessProbe.HTTPGet.HttpHeaders }}
+      path: {{ .container.ReadinessProbe.HTTPGet.Path  }}
+      port: {{ .container.ReadinessProbe.HTTPGet.Port }}
+      {{ if .container.ReadinessProbe.HTTPGet.HttpHeaders }}
       httpHeaders:
-        {{ range $name,$value := .Container.ReadinessProbe.HTTPGet.HttpHeaders }}
+        {{ range $name,$value := .container.ReadinessProbe.HTTPGet.HttpHeaders }}
         - name: {{ $name }}
           value: {{ $value }}
         {{ end }}
       {{ end }}
-    {{ else if .Container.ReadinessProbe.TCPSocket.Port }}
+    {{ else if .container.ReadinessProbe.TCPSocket.Port }}
     tcpSocket:
-      port: {{ .Container.ReadinessProbe.TCPSocket.Port }}
+      port: {{ .container.ReadinessProbe.TCPSocket.Port }}
     {{ end }}
-    {{ if .Container.ReadinessProbe.InitialDelaySeconds }}
-    initialDelaySeconds: {{ .Container.ReadinessProbe.InitialDelaySeconds }}
+    {{ if .container.ReadinessProbe.InitialDelaySeconds }}
+    initialDelaySeconds: {{ .container.ReadinessProbe.InitialDelaySeconds }}
     {{ end }}
-    {{ if .Container.ReadinessProbe.PeriodSeconds }}
-    periodSeconds: {{ .Container.ReadinessProbe.PeriodSeconds }}
+    {{ if .container.ReadinessProbe.PeriodSeconds }}
+    periodSeconds: {{ .container.ReadinessProbe.PeriodSeconds }}
     {{ end }}
-    {{ if .Container.ReadinessProbe.FailureThreshold }}
-    failureThreshold: {{ .Container.ReadinessProbe.FailureThreshold }}
+    {{ if .container.ReadinessProbe.FailureThreshold }}
+    failureThreshold: {{ .container.ReadinessProbe.FailureThreshold }}
     {{ end }}
 {{- end }}
 {{- end }}
