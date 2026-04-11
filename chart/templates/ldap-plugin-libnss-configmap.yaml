@@ -1,0 +1,19 @@
+{{- if .Values.ldapPlugin.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "helxapp-controller.ldapPlugin.fullname" . }}-libnss
+  labels:
+    {{- include "helxapp-controller.ldapPlugin.labels" . | nindent 4 }}
+data:
+  libnss-ldap.conf: |
+    uri ldap://{{ .Values.ldapPlugin.config.host }}{{ if .Values.ldapPlugin.config.port }}:{{ .Values.ldapPlugin.config.port }}{{ end }}
+    base {{ .Values.ldapPlugin.config.userBaseDN }}
+    nss_base_group {{ .Values.ldapPlugin.config.groupBaseDN }}
+    ldap_version 3
+    ssl off
+    pam_password md5
+  nsswitch.conf: |
+    passwd:         ldap files
+    group:          ldap files
+{{- end }}
