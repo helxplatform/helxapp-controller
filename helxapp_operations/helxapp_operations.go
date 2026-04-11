@@ -63,6 +63,10 @@ var simpleErrorLogger func(error, string)
 // Set from the LDAP_URL environment variable at startup.
 var ldapURL string
 
+// ldapConfigMap is the name of the ConfigMap containing libnss-ldap.conf and
+// nsswitch.conf. Set from the LDAP_CONFIGMAP environment variable at startup.
+var ldapConfigMap string
+
 func newSimpleDebugLogger(logger logr.Logger) func(message string) {
 	return func(message string) {
 		logger.V(1).Info(message)
@@ -91,6 +95,11 @@ func Initalize(logger logr.Logger) error {
 	if ldapURL != "" {
 		ldapURL = strings.TrimRight(ldapURL, "/")
 		simpleInfoLogger(fmt.Sprintf("LDAP identity source configured: %s", ldapURL))
+	}
+
+	ldapConfigMap = os.Getenv("LDAP_CONFIGMAP")
+	if ldapConfigMap != "" {
+		simpleInfoLogger(fmt.Sprintf("LDAP libnss configmap: %s", ldapConfigMap))
 	}
 
 	xformer, storage, err = template_io.ParseTemplates("templates", simpleDebugLogger)
@@ -708,6 +717,9 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 			systemEnv["APP_CLASS_NAME"] = app.Spec.AppClassName
 			systemEnv["APP_NAME"] = instance.Spec.AppName
 			systemEnv["INSTANCE_NAME"] = instance.GetNamespace() + "/" + instance.GetName()
+			if source, ok := user.Labels["helx.renci.org/identity-source"]; ok && source == "ldap" {
+				systemEnv["USER_IDENTITY"] = "ldap"
+			}
 
 			system := template_io.System{
 				AppClassName: app.Spec.AppClassName,
@@ -730,6 +742,28 @@ func GenerateArtifacts(instance *helxv1.HelxInst) (*Artifacts, error) {
 				} else {
 					system.UserInfo = info
 					system.SecurityContext = template_io.ExtractSCFromMap(info)
+				}
+			}
+
+			// Inject libnss-ldap configmap volume and mounts for LDAP identity users
+			if ldapConfigMap != "" {
+				if source, ok := user.Labels["helx.renci.org/identity-source"]; ok && source == "ldap" {
+					system.Volumes["ldap-config"] = template_io.Volume{
+						Name:   "ldap-config",
+						Scheme: "configmap",
+						Attr:   map[string]string{"configMapName": ldapConfigMap},
+					}
+					ldapMounts := []*template_io.VolumeMount{
+						{Name: "ldap-config", MountPath: "/etc/ldap.conf", SubPath: "libnss-ldap.conf"},
+						{Name: "ldap-config", MountPath: "/etc/libnss-ldap.conf", SubPath: "libnss-ldap.conf"},
+						{Name: "ldap-config", MountPath: "/etc/nsswitch.conf", SubPath: "nsswitch.conf"},
+					}
+					for i := range system.Containers {
+						system.Containers[i].VolumeMounts = append(system.Containers[i].VolumeMounts, ldapMounts...)
+					}
+					for i := range system.InitContainers {
+						system.InitContainers[i].VolumeMounts = append(system.InitContainers[i].VolumeMounts, ldapMounts...)
+					}
 				}
 			}
 

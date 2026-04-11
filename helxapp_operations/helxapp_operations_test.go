@@ -2358,3 +2358,97 @@ func TestGenerateArtifacts_AppGenZeroAlwaysReady(t *testing.T) {
 		t.Fatal("expected artifacts for gen=0, got nil")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// LDAP libnss configmap injection
+// ---------------------------------------------------------------------------
+
+func TestGenerateArtifacts_LDAPConfigMapInjection(t *testing.T) {
+	// Set the package-level ldapConfigMap to simulate LDAP_CONFIGMAP env
+	origCM := ldapConfigMap
+	ldapConfigMap = "my-libnss-config"
+	defer func() { ldapConfigMap = origCM }()
+
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	AddApp(app)
+
+	user := makeUser("ns", "alice", nil)
+	user.Labels = map[string]string{"helx.renci.org/identity-source": "ldap"}
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-ldap-cm")
+	AddInst(inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts, got nil")
+	}
+
+	render := artifacts.Deployment.Render
+
+	// Verify the configmap volume is present
+	if !strings.Contains(render, "ldap-config") {
+		t.Error("deployment should contain ldap-config volume")
+	}
+	if !strings.Contains(render, "my-libnss-config") {
+		t.Error("deployment should reference the libnss configmap name")
+	}
+
+	// Verify the 3 subPath mounts
+	if !strings.Contains(render, "/etc/ldap.conf") {
+		t.Error("deployment should mount /etc/ldap.conf")
+	}
+	if !strings.Contains(render, "/etc/libnss-ldap.conf") {
+		t.Error("deployment should mount /etc/libnss-ldap.conf")
+	}
+	if !strings.Contains(render, "/etc/nsswitch.conf") {
+		t.Error("deployment should mount /etc/nsswitch.conf")
+	}
+
+	// Verify USER_IDENTITY env var
+	if !strings.Contains(render, "USER_IDENTITY") {
+		t.Error("deployment should contain USER_IDENTITY env var")
+	}
+}
+
+func TestGenerateArtifacts_NoLDAPConfigMapWithoutLabel(t *testing.T) {
+	// With LDAP_CONFIGMAP set but user without the label, no injection should occur
+	origCM := ldapConfigMap
+	ldapConfigMap = "my-libnss-config"
+	defer func() { ldapConfigMap = origCM }()
+
+	resetTables()
+	app := makeApp("ns", "myapp", "Nginx", []helxv1.Service{
+		{Name: "main", Image: "nginx", Command: []string{"nginx"}, Ports: []helxv1.PortMap{{ContainerPort: 80, Port: 80}}},
+	})
+	AddApp(app)
+
+	user := makeUser("ns", "alice", nil)
+	// No identity-source label
+	AddUser(user)
+
+	inst := makeInst("ns", "inst1", "myapp", "alice", "uuid-no-ldap-cm")
+	AddInst(inst)
+
+	artifacts, err := GenerateArtifacts(inst)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if artifacts == nil {
+		t.Fatal("expected artifacts, got nil")
+	}
+
+	render := artifacts.Deployment.Render
+	if strings.Contains(render, "/etc/ldap.conf") {
+		t.Error("deployment should NOT mount /etc/ldap.conf without ldap label")
+	}
+	if strings.Contains(render, "USER_IDENTITY") {
+		t.Error("deployment should NOT contain USER_IDENTITY without ldap label")
+	}
+}
